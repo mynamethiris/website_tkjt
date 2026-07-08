@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1",
+    "name": "Andre Ary Sukma, S. Kom",
+    "role": "Kepala Jurusan TKJT",
+    "photo": "https://raw.githubusercontent.com/mynamethiris/tkjt_assets/25eb772/Guru/pak_andre.png",
+    "isHod": true
+  },
+  {
+    "id": "2",
+    "name": "Retno Ariyanti Nurningtias, S. Pd",
+    "role": "Guru Produktif TKJT",
+    "photo": "https://raw.githubusercontent.com/mynamethiris/tkjt_assets/25eb772/Guru/bu_retno.jpeg",
+    "isHod": false
+  }
+]

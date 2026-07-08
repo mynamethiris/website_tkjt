@@ -1,0 +1,113 @@
+{
+  "specializations": [
+    {
+      "id": "se",
+      "name": "Software Engineering (SE)",
+      "title": "Perekayasaan & Pemrograman Perangkat Lunak",
+      "description": "Siswa didik diajarkan merancang sistem informasi terintegrasi, pemrograman web modern, pengembangan aplikasi seluler, serta arsitektur dan pengelolaan basis data. Fokus utama kami adalah menghasilkan lulusan yang mahir memecahkan masalah dengan logika program yang efisien dan siap kerja di industri digital.",
+      "features": [
+        "Dasar Logika & Bahasa Pemrograman Populer",
+        "Pengembangan & Arsitektur Website Modern",
+        "Pengembangan Aplikasi Seluler (Android & iOS)",
+        "Perancangan & Pengelolaan Basis Data (Database)",
+        "Integrasi Sistem & Manajemen Proyek Aplikasi"
+      ]
+    },
+    {
+      "id": "ne",
+      "name": "Network Engineering (NE)",
+      "title": "Infrastruktur Jaringan & Administrasi Sistem",
+      "description": "Siswa didik dibekali keahlian mendalam dalam merancang jaringan LAN/WAN komputer, administrasi sistem Linux, konfigurasi router & switch level korporat (Cisco & Mikrotik), serta sistem transmisi serat optik dan nirkabel di era industri global saat ini.",
+      "features": [
+        "Penguasaan Skill Utama Network Engineer",
+        "Pendalaman Routing & Switching (Cisco & MikroTik)",
+        "Administrasi Sistem Linux Server (Debian/RedHat)",
+        "Implementasi Jaringan Serat Optik & Nirkabel",
+        "Mendalami teknik mengamankan data dari peretasan"
+      ]
+    }
+  ],
+  "contacts": [
+    {
+      "id": "alamat",
+      "title": "Alamat SMK",
+      "value": "Kawasan Deltamas",
+      "detail": "Jl. Deltamas Boulevard Blok C 01, Hegarmukti, Kec. Cikarang Pusat, Bekasi, Jawa Barat 17530.",
+      "icon": "MapPin"
+    },
+    {
+      "id": "kontak",
+      "title": "Medsos Kami",
+      "value": "@tkjtamideltamas15",
+      "detail": "Ikuti dokumentasi harian, portofolio proyek siswa, inovasi AI, serta info pendaftaran resmi kami di Instagram.",
+      "icon": "Instagram"
+    },
+    {
+      "id": "email",
+      "title": "Email Resmi",
+      "value": "realtkjt.ami@gmail.com",
+      "detail": "Hubungi kami via surat elektronik resmi untuk kerja sama industri, magang, atau rekrutmen alumni.",
+      "icon": "Mail"
+    }
+  ],
+  "faqs": [
+    {
+      "id": 1,
+      "question": "Apa itu TKJT?",
+      "answer": [
+        "TKJT adalah singkatan dari Teknik Komputer Jaringan dan Telekomunikasi. Jurusan ini dirancang untuk membekali siswa dengan keahlian menyeluruh di bidang teknologi informasi. Pembelajarannya dimulai dari pemahaman mendasar mengenai Dasar Teknik Komputer Jaringan Telekomunikasi, penguasaan Dasar Hardware dan Software Komputer, hingga penerapan teknologi jaringan modern berskala luas."
+      ]
+    },
+    {
+      "id": 2,
+      "question": "Apa manfaat mengikuti jurusan TKJT?",
+      "answer": [
+        "Selain peluang kerja yang luas di industri IT dan telekomunikasi, jurusan ini memberikan manfaat praktis yang sangat nyata. Melalui materi Produk Kreatif dan Kewirausahaan, siswa tidak hanya dididik menjadi pekerja, tetapi juga dilatih untuk melihat peluang bisnis, seperti membuka jasa instalasi jaringan, menjadi konsultan IT, atau mendirikan usaha perbaikan perangkat digital secara mandiri."
+      ]
+    },
+    {
+      "id": 3,
+      "question": "Apakah jurusan TKJT memerlukan kemampuan khusus?",
+      "answer": [
+        "Tidak perlu khawatir, semua materi diajarkan dari tingkat dasar. Namun, karena Anda akan sering berhadapan dengan perangkat keras yang sensitif dan konfigurasi yang presisi, Anda akan dilatih untuk memiliki ketelitian tinggi, terutama saat mempelajari penggunaan Alat Ukur Presisi dan penerapan Keselamatan dan Kesehatan Kerja (K3) agar proses kerja di laboratorium maupun di industri nantinya berjalan dengan aman."
+      ]
+    },
+    {
+      "id": 4,
+      "question": "Apakah saja fasilitas pendukung yang ada di SMK Ananda Mitra Industri Deltamas untuk jurusan TKJT?",
+      "answer": [
+        "Kami menyediakan fasilitas lengkap berstandar industri untuk mendukung seluruh kurikulum praktis, seperti:",
+        "- Laboratorium komputer yang memadai untuk praktik Merakit dan Perawatan Komputer.",
+        "- Perangkat jaringan (Router, Switch, Akses Poin) asli untuk simulasi langsung Instalasi Jaringan LAN dan WAN.",
+        "- Lingkungan kerja yang bersih dan aman sesuai standar Keselamatan dan Kesehatan Kerja (K3) industri."
+      ]
+    },
+    {
+      "id": 5,
+      "question": "Apa spesifikasi laptop yang diperlukan untuk TKJT?",
+      "answer": [
+        "Laptop yang digunakan harus mampu menjalankan program simulasi dan tools desain dengan lancar. Hal ini penting karena siswa akan aktif dalam Penggunaan Perangkat Lunak Jaringan (seperti Cisco Packet Tracer atau Android Studio) serta aplikasi Desain Grafis. Rekomendasi spesifikasinya adalah:",
+        "- Prosesor: Minimal Intel Core i3 dan generasi ke-8 atau AMD Ryzen 3 dan seri ke-3000 (Disarankan Core i5 generasi ke-12 / Ryzen 5 seri ke-5000).",
+        "- RAM: Minimal 8 GB (Sangat penting untuk kelancaran multitasking perangkat lunak).",
+        "- Penyimpanan: Minimal 256 GB SSD atau 512 GB SSD (Agar proses booting dan loading aplikasi cepat)."
+      ]
+    },
+    {
+      "id": 6,
+      "question": "Apa saja materi yang akan dipelajari?",
+      "answer": [
+        "Kurikulum TKJT di susun secara sistematis yang mencakup bidang-bidang berikut:",
+        "- Keselamatan dan Kesehatan Kerja (K3).",
+        "- Alat Ukur Presisi.",
+        "- Dasar Teknik Komputer Jaringan Telekomunikasi.",
+        "- Dasar Hardware dan Software Komputer.",
+        "- Merakit dan Perawatan Komputer.",
+        "- Instalasi Jaringan LAN dan WAN.",
+        "- Troubleshooting/Perbaikan.",
+        "- Desain Grafis.",
+        "- Penggunaan Perangkat Lunak Jaringan.",
+        "- Produk Kreatif dan Kewirausahaan."
+      ]
+    }
+  ]
+}
