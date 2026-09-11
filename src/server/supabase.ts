@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Klien Supabase khusus server. Memakai service role key kalau ada supaya
 // operasi tulis lolos RLS. Browser tidak pernah memanggil Supabase langsung,
@@ -32,10 +32,21 @@ export function getSupabase(): SupabaseClient | null {
     'VITE_SUPABASE_PUBLISHABLE_KEY',
   );
 
-  _client =
-    url && key && !url.includes('dummy')
-      ? createClient(url, key, { auth: { persistSession: false } })
-      : null;
+  if (!url || !key || url.includes('dummy')) {
+    _client = null;
+    return _client;
+  }
+
+  try {
+    // Lazy-require (bukan import statis): kalau package gagal dimuat di
+    // runtime serverless, jangan jatuhkan boot function — kembalikan null
+    // supaya handler fallback ke data lokal dan tetap membalas JSON.
+    const mod = require('@supabase/supabase-js') as typeof import('@supabase/supabase-js');
+    _client = mod.createClient(url, key, { auth: { persistSession: false } });
+  } catch (err) {
+    console.error('Supabase client init failed, fallback ke lokal:', err);
+    _client = null;
+  }
   return _client;
 }
 
