@@ -44,7 +44,14 @@ async function supaQuery(promise: any, ms = 8000) {
 }
 
 export default async function handler(req: any, res: any) {
-  const supabase = getSupabase();
+  // getSupabase() bisa throw kalau SUPABASE_URL tidak valid. Jangan biarkan
+  // function crash: Vercel membalas HTML 500 yang merusak res.json() di klien.
+  let supabase: any = null;
+  try {
+    supabase = getSupabase();
+  } catch (err) {
+    console.error('Supabase init error, fallback ke lokal:', err);
+  }
 
   if (req.method === 'GET') {
     try {

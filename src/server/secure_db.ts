@@ -13,7 +13,6 @@ export class SecureDatabase {
     auditLogs: any[];
     absensi: any[];
     bengkelLogs: any[];
-    materi: any[];
     pencapaian: any[];
   };
 
@@ -29,7 +28,6 @@ export class SecureDatabase {
       auditLogs: [],
       absensi: [],
       bengkelLogs: [],
-      materi: [],
       pencapaian: []
     };
     this.initDatabase();
@@ -50,7 +48,6 @@ export class SecureDatabase {
         this.data.auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
         this.data.absensi = Array.isArray(parsed.absensi) ? parsed.absensi : [];
         this.data.bengkelLogs = Array.isArray(parsed.bengkelLogs) ? parsed.bengkelLogs : [];
-        this.data.materi = Array.isArray(parsed.materi) ? parsed.materi : [];
         this.data.pencapaian = Array.isArray(parsed.pencapaian) ? parsed.pencapaian : [];
 
         this.save();
@@ -143,15 +140,6 @@ export class SecureDatabase {
 
   public setBengkelLogs(val: any[]) {
     this.data.bengkelLogs = val;
-    this.save();
-  }
-
-  public getMateri() {
-    return this.data.materi;
-  }
-
-  public setMateri(val: any[]) {
-    this.data.materi = val;
     this.save();
   }
 

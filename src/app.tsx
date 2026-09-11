@@ -9,17 +9,31 @@ import Laporan_piket from './components/pages/laporan_piket';
 import Galeri from './components/pages/galeri';
 import Inventaris_lab from './components/pages/inventaris_lab';
 import Absensi_tkjt from './components/pages/absensi_tkjt';
-import Materi from './components/pages/materi';
 import Pencapaian from './components/pages/pencapaian';
 import Admin from './components/pages/admin';
 import Toast_notification from './components/features/toast_notification';
 import Modal from './components/features/modal';
 import Button from './components/features/button';
-import { Student, GalleryItem, AbsensiTKJT, TKJTMateri, PencapaianTKJT } from './types';
+import { Student, GalleryItem, AbsensiTKJT, PencapaianTKJT } from './types';
 import Kontributor from './components/pages/kontributor';
 import { authHeaders, clearToken, getToken, saveToken } from './auth_client';
 
 const defaultGallery: GalleryItem[] = [];
+
+// Parsing JSON yang aman: endpoint bisa membalas non-JSON (mis. halaman HTML
+// error 500 dari serverless) yang membuat res.json() throw. Kembalikan null
+// supaya polling gagal diam-diam tanpa merusak state yang sudah ada.
+async function parseJsonSafe(res: Response): Promise<any | null> {
+  try {
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok || !contentType.includes('application/json')) {
+      return null;
+    }
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
 
 import { deepEqual } from './utils';
 
@@ -31,7 +45,6 @@ export default function App() {
   const [studentsState, setStudentsState] = useState<Student[]>([]);
   const [galleryItemsState, setGalleryItemsState] = useState<GalleryItem[]>([]);
   const [absensiState, setAbsensiState] = useState<AbsensiTKJT[]>([]);
-  const [materiState, setMateriState] = useState<TKJTMateri[]>([]);
   const [pencapaianState, setPencapaianState] = useState<PencapaianTKJT[]>([]);
 
   // Efek Simpan Tab Aktif
@@ -42,12 +55,13 @@ export default function App() {
   // Efek Muat Data
   useEffect(() => {
     fetch('/api/data')
-      .then(res => res.json())
+      .then(res => parseJsonSafe(res))
       .then(data => {
-        if (data && Array.isArray(data.students)) {
+        if (!data) return;
+        if (Array.isArray(data.students)) {
           setStudentsState(data.students);
         }
-        if (data && Array.isArray(data.galleryItems)) {
+        if (Array.isArray(data.galleryItems)) {
           setGalleryItemsState(data.galleryItems);
         } else {
           setGalleryItemsState(defaultGallery);
@@ -60,7 +74,7 @@ export default function App() {
 
     const poll = setInterval(() => {
       fetch('/api/data')
-        .then(res => res.json())
+        .then(res => parseJsonSafe(res))
         .then(data => {
           if (data) {
             if (Array.isArray(data.students)) {
@@ -84,7 +98,7 @@ export default function App() {
         .catch(err => console.error("Error polling data:", err));
 
       fetch('/api/absensi')
-        .then(res => res.json())
+        .then(res => parseJsonSafe(res))
         .then(data => {
           if (Array.isArray(data)) {
             setAbsensiState(prev => !deepEqual(prev, data) ? data : prev);
@@ -92,17 +106,8 @@ export default function App() {
         })
         .catch(err => console.error("Error polling absensi:", err));
 
-      fetch('/api/materi')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setMateriState(prev => !deepEqual(prev, data) ? data : prev);
-          }
-        })
-        .catch(err => console.error("Error polling materi:", err));
-
       fetch('/api/pencapaian')
-        .then(res => res.json())
+        .then(res => parseJsonSafe(res))
         .then(data => {
           if (Array.isArray(data)) {
             setPencapaianState(prev => !deepEqual(prev, data) ? data : prev);
@@ -163,32 +168,6 @@ export default function App() {
     } catch (error) {
       console.error("Error saving absensi:", error);
       triggerToast("Perubahan absensi tersimpan sementara di lokal browser", "info");
-      return false;
-    }
-  };
-
-  // Handler Simpan Data Materi
-  const handleSaveMateri = async (updatedMateri: TKJTMateri[]) => {
-    try {
-      const response = await fetch('/api/materi', {
-        method: 'POST',
-        headers: authHeaders({
-          'Content-Type': 'application/json',
-        }),
-        body: JSON.stringify(updatedMateri),
-      });
-      const resData = await response.json();
-      if (resData.success) {
-        setMateriState(updatedMateri);
-        triggerToast("Data materi berhasil disimpan!", "success");
-        return true;
-      } else {
-        triggerToast("Gagal menyimpan data materi", "error");
-        return false;
-      }
-    } catch (error) {
-      console.error("Error saving materi:", error);
-      triggerToast("Perubahan materi tersimpan sementara di lokal browser", "info");
       return false;
     }
   };
@@ -490,16 +469,6 @@ export default function App() {
                   absensiList={absensiState}
                   setAbsensiList={setAbsensiState}
                   onSave={handleSaveAbsensi}
-                />
-              ) : activeTab === 'materi' ? (
-                <Materi
-                  isLoggedIn={isLoggedIn}
-                  userSession={userSession}
-                  triggerToast={triggerToast}
-                  materiList={materiState}
-                  setMateriList={setMateriState}
-                  onSave={handleSaveMateri}
-                  onLoginRequest={openAuthGateway}
                 />
               ) : activeTab === 'pencapaian' ? (
                 <Pencapaian

@@ -211,18 +211,6 @@ export default function Header({
             >
               Profil Jurusan
             </button>
-            <button
-              onClick={() => handleNavClick("materi")}
-              className={`text-sm font-semibold tracking-wide transition-all py-2 border-b-2 hover:border-blue-500 cursor-pointer
-                ${
-                  activeTab === "materi"
-                    ? "text-blue-500 border-blue-500"
-                    : "text-slate-600 dark:text-slate-300 border-transparent hover:text-slate-900 dark:hover:text-white"
-                }`}
-            >
-              Materi TKJT
-            </button>
-
             <div className="relative">
               <button
                 type="button"
@@ -519,18 +507,6 @@ export default function Header({
             >
               Profil Jurusan
             </button>
-            <button
-              onClick={() => handleNavClick("materi")}
-              className={`flex w-full items-center px-4 py-3 rounded-lg text-sm font-semibold transition-colors
-                ${
-                  activeTab === "materi"
-                    ? "bg-blue-50 dark:bg-blue-900/10 text-blue-500"
-                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900"
-                }`}
-            >
-              Materi TKJT
-            </button>
-
             <div className="space-y-1">
               <button
                 type="button"

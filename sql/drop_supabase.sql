@@ -29,7 +29,6 @@ DROP TABLE IF EXISTS tkjt_picket_reports;
 DROP TABLE IF EXISTS tkjt_inventory;
 DROP TABLE IF EXISTS tkjt_absensi;
 DROP TABLE IF EXISTS tkjt_bengkel_logs;
-DROP TABLE IF EXISTS tkjt_materi;
 DROP TABLE IF EXISTS tkjt_pencapaian;
 
 -- 3. Verifikasi: kedua query di bawah harus mengembalikan 0 baris.

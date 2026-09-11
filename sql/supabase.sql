@@ -91,19 +91,6 @@ CREATE TABLE IF NOT EXISTS tkjt_absensi (
   "createdAt" BIGINT
 );
 
-CREATE TABLE IF NOT EXISTS tkjt_materi (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  category TEXT NOT NULL,
-  description TEXT,
-  "contentType" TEXT NOT NULL,
-  content TEXT,
-  "fileUrl" TEXT,
-  "videoEmbedUrl" TEXT,
-  "order" INT NOT NULL,
-  "createdAt" BIGINT
-);
-
 CREATE TABLE IF NOT EXISTS tkjt_pencapaian (
   id TEXT PRIMARY KEY,
   "studentName" TEXT NOT NULL,
@@ -137,7 +124,6 @@ ALTER TABLE tkjt_picket_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tkjt_inventory      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tkjt_bengkel_logs   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tkjt_absensi        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tkjt_materi         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tkjt_pencapaian     ENABLE ROW LEVEL SECURITY;
 
 -- Prinsip kebijakan:
@@ -180,8 +166,6 @@ CREATE POLICY "service_write" ON tkjt_inventory      FOR ALL TO service_role USI
 CREATE POLICY "service_write" ON tkjt_bengkel_logs   FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "anon_read" ON tkjt_absensi        FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "service_write" ON tkjt_absensi        FOR ALL TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "anon_read" ON tkjt_materi         FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "service_write" ON tkjt_materi         FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "anon_read" ON tkjt_pencapaian     FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "service_write" ON tkjt_pencapaian     FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -196,7 +180,7 @@ FROM pg_policies
 WHERE schemaname = 'public' AND tablename LIKE 'tkjt_%'
 ORDER BY tablename, policyname;
 
--- Harapan: rowsecurity = true untuk kesembilan tabel.
+-- Harapan: rowsecurity = true untuk kedelapan tabel.
 SELECT tablename, rowsecurity
 FROM pg_tables
 WHERE schemaname = 'public' AND tablename LIKE 'tkjt_%'

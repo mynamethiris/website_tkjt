@@ -269,20 +269,42 @@ export default function Beranda({ isLoggedIn, onLoginRequest, triggerToast, setA
   };
 
   // [Handler Diagnostik]
-  const handleStartDiagnostic = () => {
+  // Akses dikunci: hanya peran 'tamu' dan 'admin' yang boleh membuka.
+  const canAccessDiagnostic =
+    !!isLoggedIn &&
+    !!userSession &&
+    (userSession.role === 'tamu' || userSession.role === 'admin');
+
+  const handleDiagnosticDenied = () => {
     if (!isLoggedIn) {
       if (triggerToast) {
-        triggerToast("Silakan login terlebih dahulu untuk mengakses pengujian diagnostik spesialisasi.", "error");
+        triggerToast("Silakan login sebagai tamu atau admin untuk mengakses pengujian diagnostik spesialisasi.", "error");
       }
       if (onLoginRequest) {
         onLoginRequest();
       }
-    } else {
-      setCurrentDiagnosticStep(0);
-      setHasOpenedCurrentForm(false);
-      setIsDiagnosticCompleted(false);
-      setIsDiagnosticModalOpen(true);
+    } else if (triggerToast) {
+      triggerToast("Akses ditolak: pengujian diagnostik hanya untuk akun tamu dan admin.", "error");
     }
+  };
+
+  const handleDiagnosticCardClick = (url: string) => {
+    if (!canAccessDiagnostic) {
+      handleDiagnosticDenied();
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleStartDiagnostic = () => {
+    if (!canAccessDiagnostic) {
+      handleDiagnosticDenied();
+      return;
+    }
+    setCurrentDiagnosticStep(0);
+    setHasOpenedCurrentForm(false);
+    setIsDiagnosticCompleted(false);
+    setIsDiagnosticModalOpen(true);
   };
 
 
@@ -617,12 +639,14 @@ export default function Beranda({ isLoggedIn, onLoginRequest, triggerToast, setA
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 relative z-10 w-full">
-                
-                <a 
-                  href="https://forms.gle/DPwiqncxS8qsoymw8"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group/card rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 p-4 sm:p-5 flex flex-col items-center justify-between text-center space-y-3 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/5 dark:hover:bg-blue-950/10 transition-all duration-300 cursor-pointer"
+
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosticCardClick("https://forms.gle/DPwiqncxS8qsoymw8")}
+                  disabled={!!isLoggedIn && !canAccessDiagnostic}
+                  aria-disabled={!canAccessDiagnostic}
+                  title={canAccessDiagnostic ? "Buka formulir Minat Masa Depan" : "Hanya akun tamu dan admin yang dapat mengakses"}
+                  className={`group/card rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 p-4 sm:p-5 flex flex-col items-center justify-between text-center space-y-3 transition-all duration-300 ${canAccessDiagnostic ? "hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/5 dark:hover:bg-blue-950/10 cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
                 >
                   <div className="flex flex-col items-center space-y-2.5">
                     <div className="p-2 sm:p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover/card:scale-105 transition-transform duration-300">
@@ -638,13 +662,15 @@ export default function Beranda({ isLoggedIn, onLoginRequest, triggerToast, setA
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 group-hover/card:translate-x-0.5 transition-transform">
                     Isi Formulir <ArrowRight className="h-3 w-3" />
                   </span>
-                </a>
+                </button>
 
-                <a 
-                  href="https://forms.gle/TaNzaAUJsoZSimAJ9"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group/card rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 p-4 sm:p-5 flex flex-col items-center justify-between text-center space-y-3 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/5 dark:hover:bg-blue-950/10 transition-all duration-300 cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosticCardClick("https://forms.gle/TaNzaAUJsoZSimAJ9")}
+                  disabled={!!isLoggedIn && !canAccessDiagnostic}
+                  aria-disabled={!canAccessDiagnostic}
+                  title={canAccessDiagnostic ? "Buka formulir Kecenderungan Adaptif" : "Hanya akun tamu dan admin yang dapat mengakses"}
+                  className={`group/card rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 p-4 sm:p-5 flex flex-col items-center justify-between text-center space-y-3 transition-all duration-300 ${canAccessDiagnostic ? "hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/5 dark:hover:bg-blue-950/10 cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
                 >
                   <div className="flex flex-col items-center space-y-2.5">
                     <div className="p-2 sm:p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover/card:scale-105 transition-transform duration-300">
@@ -660,13 +686,15 @@ export default function Beranda({ isLoggedIn, onLoginRequest, triggerToast, setA
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 group-hover/card:translate-x-0.5 transition-transform">
                     Isi Formulir <ArrowRight className="h-3 w-3" />
                   </span>
-                </a>
+                </button>
 
-                <a 
-                  href="https://forms.gle/5u8gE3Ezoaw6NjC18"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group/card rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 p-4 sm:p-5 flex flex-col items-center justify-between text-center space-y-3 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/5 dark:hover:bg-blue-950/10 transition-all duration-300 cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosticCardClick("https://forms.gle/5u8gE3Ezoaw6NjC18")}
+                  disabled={!!isLoggedIn && !canAccessDiagnostic}
+                  aria-disabled={!canAccessDiagnostic}
+                  title={canAccessDiagnostic ? "Buka formulir SE vs NE" : "Hanya akun tamu dan admin yang dapat mengakses"}
+                  className={`group/card rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 p-4 sm:p-5 flex flex-col items-center justify-between text-center space-y-3 transition-all duration-300 ${canAccessDiagnostic ? "hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/5 dark:hover:bg-blue-950/10 cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
                 >
                   <div className="flex flex-col items-center space-y-2.5">
                     <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 bg-blue-500/10 p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl group-hover/card:scale-105 transition-transform duration-300">
@@ -684,7 +712,7 @@ export default function Beranda({ isLoggedIn, onLoginRequest, triggerToast, setA
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 group-hover/card:translate-x-0.5 transition-transform">
                     Isi Formulir <ArrowRight className="h-3 w-3" />
                   </span>
-                </a>
+                </button>
 
               </div>
 
@@ -758,14 +786,24 @@ export default function Beranda({ isLoggedIn, onLoginRequest, triggerToast, setA
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-center relative z-10">
+              <div className="pt-4 flex flex-col items-center gap-2 justify-center relative z-10">
                 <button
                   onClick={handleStartDiagnostic}
-                  className="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 text-sm font-bold transition-all active:scale-[0.98] cursor-pointer"
+                  disabled={!!isLoggedIn && !canAccessDiagnostic}
+                  aria-disabled={!canAccessDiagnostic}
+                  title={canAccessDiagnostic ? "Mulai pengujian diagnostik" : "Hanya akun tamu dan admin yang dapat mengakses"}
+                  className={`w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-bold transition-all active:scale-[0.98] ${canAccessDiagnostic ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer" : "bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed"}`}
                 >
                   Mulai Diagnostik Sekarang
                   <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
                 </button>
+                {!canAccessDiagnostic && (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {isLoggedIn
+                      ? "Akses ditolak: pengujian ini khusus akun tamu dan admin."
+                      : "Khusus akun tamu dan admin. Klik tombol untuk login."}
+                  </p>
+                )}
               </div>
 
             </div>

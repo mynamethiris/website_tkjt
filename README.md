@@ -14,7 +14,7 @@ Website Jurusan TKJT (Teknik Komputer Jaringan dan Telekomunikasi) adalah platfo
 - **Sistem Manajemen Piket**: Jadwal, absensi GPS, laporan, dan rotasi ketua piket otomatis
 - **Inventaris Laboratorium**: Pencatatan dan pelacakan pinjaman peralatan
 - **Absensi & Bengkel**: Pencatatan kehadiran siswa dan penggunaan perangkat bengkel
-- **Materi & Pencapaian**: Platform pembelajaran dan portfolio pencapaian siswa TKJT
+- **Pencapaian**: Portfolio pencapaian siswa TKJT
 - **Portal Informasi**: Profil jurusan, kurikulum, FAQ, kontak, dan kontributor
 
 ### Target Pengguna
@@ -157,13 +157,12 @@ web_jurusan/
 │   ├── inventory.ts             # Endpoint data inventaris
 │   ├── absensi.ts               # Endpoint data absensi
 │   ├── bengkel.ts               # Endpoint data log bengkel
-│   ├── materi.ts                # Endpoint data materi
 │   └── pencapaian.ts            # Endpoint data pencapaian
 ├── scripts/                     # Self-check pra-publish (tanpa server/Supabase)
 │   ├── check_pin.ts             # Self-check hash & verifikasi PIN scrypt
 │   └── check_api_handlers.ts    # Self-check token sesi HMAC
 ├── sql/
-│   ├── supabase.sql             # Script setup database Supabase (9 tabel + RLS)
+│   ├── supabase.sql             # Script setup database Supabase (8 tabel + RLS)
 │   └── drop_supabase.sql        # Script reset/hapus tabel
 ├── data/
 │   ├── students.json            # Data siswa (read-only, disajikan via /api/data)
@@ -188,9 +187,8 @@ web_jurusan/
         │   ├── laporan_piket.tsx
         │   ├── inventaris_lab.tsx
         │   ├── absensi_tkjt.tsx
-        │   ├── bengkel.tsx
-        │   ├── materi.tsx
-        │   ├── pencapaian.tsx
+│   ├── bengkel.tsx
+│   ├── pencapaian.tsx
         │   ├── admin.tsx
         │   └── kontributor.tsx
         └── features/            # Komponen UI reusable
@@ -233,8 +231,6 @@ web_jurusan/
 | `POST` | `/api/absensi` | Simpan data absensi (sinkron ke Supabase) | Admin + piket |
 | `GET` | `/api/bengkel` | Ambil data log bengkel | Publik |
 | `POST` | `/api/bengkel` | Simpan data log bengkel (sinkron ke Supabase) | Admin + piket |
-| `GET` | `/api/materi` | Ambil data materi | Publik |
-| `POST` | `/api/materi` | Simpan data materi (sinkron ke Supabase) | Admin |
 | `GET` | `/api/pencapaian` | Ambil data pencapaian | Publik |
 | `POST` | `/api/pencapaian` | Simpan data pencapaian (sinkron ke Supabase) | Admin |
 
@@ -262,7 +258,6 @@ Server melakukan sinkronisasi dua arah antara database lokal JSON dan Supabase:
 | Inventaris | `database.json` + Supabase `tkjt_inventory` | Ya (ketua piket + admin) |
 | Absensi TKJT | `database.json` + Supabase `tkjt_absensi` | Ya (ketua piket + admin) |
 | Bengkel Logs | `database.json` + Supabase `tkjt_bengkel_logs` | Ya (ketua piket + admin) |
-| Materi TKJT | `database.json` + Supabase `tkjt_materi` | Ya (admin) |
 | Pencapaian TKJT | `database.json` + Supabase `tkjt_pencapaian` | Ya (admin) |
 
 ---
@@ -300,7 +295,6 @@ Server melakukan sinkronisasi dua arah antara database lokal JSON dan Supabase:
 | Inventaris Lab | Login required | Ya | Ya |
 | Absensi TKJT | Login required | Ya | Ya |
 | Bengkel | Login required | Ya | Ya |
-| Materi TKJT | Ya | Ya | Ya |
 | Pencapaian TKJT | Ya | Ya | Ya |
 | Panel Admin | Login required | Login required | Ya |
 
@@ -357,12 +351,6 @@ Server melakukan sinkronisasi dua arah antara database lokal JSON dan Supabase:
 - Check-in/Check-out: Sistem peminjaman dan pengembalian perangkat bengkel
 - Integrasi Inventaris: Pilih barang langsung dari database inventaris lab
 - Riwayat Penggunaan: Daftar log dengan status sedang dipinjam atau sudah dikembalikan
-
-#### Materi TKJT (`src/components/pages/materi.tsx`)
-- Katalog Materi: Daftar materi pembelajaran dengan filter kategori
-- Tampilan Grid/List: Toggle antara tampilan grid kartu dan daftar
-- Video Embed: Putar video YouTube langsung di modal
-- CRUD Materi (Admin): Tambah, edit, hapus materi dengan tipe konten (HTML, PDF, Video, Tautan)
 
 #### Pencapaian TKJT (`src/components/pages/pencapaian.tsx`)
 - Portfolio Siswa: Daftar pencapaian siswa berupa sertifikasi, kompetensi, dan proyek

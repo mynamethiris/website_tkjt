@@ -95,21 +95,6 @@ export interface BengkelLog {
   reportDate: string;
 }
 
-export type ContentType = "html" | "pdf" | "video" | "link";
-
-export interface TKJTMateri {
-  id: string;
-  title: string;
-  category: string;
-  description?: string;
-  contentType: ContentType;
-  content?: string;
-  fileUrl?: string;
-  videoEmbedUrl?: string;
-  order: number;
-  createdAt?: number;
-}
-
 export interface PencapaianTKJT {
   id: string;
   studentName: string;

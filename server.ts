@@ -109,7 +109,6 @@ async function startServer() {
           ["tkjt_inventory", () => db.getInventory()],
           ["tkjt_absensi", () => db.getAbsensi()],
           ["tkjt_bengkel_logs", () => db.getBengkelLogs()],
-          ["tkjt_materi", () => db.getMateri()],
           ["tkjt_pencapaian", () => db.getPencapaian()],
         ];
 
@@ -582,46 +581,6 @@ async function startServer() {
         }
       }
       res.json({ success: true, bengkelLogs: items });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Fungsi ambil data materi TKJT
-  app.get('/api/materi', async (_req, res) => {
-    try {
-      if (supabase) {
-        const { data, error } = await supaQuery(
-          supabase.from('tkjt_materi').select('*').order('order', { ascending: true }),
-        );
-        if (!error && data) {
-          return res.json(stripMeta(data));
-        }
-      }
-      res.json(db.getMateri());
-    } catch {
-      res.json(db.getMateri());
-    }
-  });
-
-  // Fungsi simpan data materi TKJT
-  app.post('/api/materi', async (req, res) => {
-    if (!requireWriteAccess(req, res, ['admin'])) return;
-    try {
-      const items = req.body;
-      if (!Array.isArray(items)) {
-        return res.status(400).json({ error: 'Data materi harus berupa array' });
-      }
-      db.setMateri(items);
-
-      if (supabase) {
-        try {
-          await syncTable('tkjt_materi', items);
-        } catch (err) {
-          console.error('Supabase materi sync error:', err);
-        }
-      }
-      res.json({ success: true, materi: items });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
