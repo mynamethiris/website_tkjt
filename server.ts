@@ -3,16 +3,37 @@ dotenv.config();
 
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { db } from "./src/server/secure_db.js";
-import { getSupabase } from "./src/server/supabase.js";
+import { getSupabase, supabaseConfigured } from "./src/server/supabase.js";
+import {
+  authConfigured,
+  issueToken,
+  requireWriteAccess,
+  sessionFromRequest,
+} from "./src/server/auth_token.js";
+import {
+  loadAccountsWithPins,
+  preserveExistingPins,
+  stripPins,
+  verifyPin,
+} from "./src/server/picket_store.js";
 
 // Students dibaca dari JSON saat runtime (tidak di-bundle ke server.cjs)
 const studentsPath = path.join(process.cwd(), "data", "students.json");
 const students = JSON.parse(fs.readFileSync(studentsPath, "utf-8"));
+
+// Perbandingan waktu-konstan untuk kredensial.
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
 
 function stripMeta(items: any[] | null): any[] {
   if (!items) return [];
@@ -33,8 +54,46 @@ async function startServer() {
   const PORT = 3000;
   const supabase = getSupabase();
 
-  app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors());
+  // Rate limiter sederhana untuk login
+  // ponytail: rate limit in-memory per instance. Naik ke Redis kalau jalan multi-instance.
+  const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+  const MAX_ATTEMPTS = Number(process.env.AUTH_RATE_MAX || 5);
+  const WINDOW_MS = Number(process.env.AUTH_RATE_WINDOW_MS || 60_000);
+
+  app.use((req, res, next) => {
+    if (req.method === "POST" && req.path.startsWith("/api/auth/")) {
+      const ip = req.ip || req.socket.remoteAddress || "unknown";
+      const now = Date.now();
+      const entry = loginAttempts.get(ip);
+      if (!entry || now >= entry.resetAt) {
+        loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+      } else {
+        entry.count++;
+        if (entry.count > MAX_ATTEMPTS) {
+          return res.status(429).json({ error: "Terlalu banyak percobaan. Coba lagi dalam 1 menit." });
+        }
+      }
+    }
+    next();
+  });
+
+  const isDev = process.env.NODE_ENV !== "production";
+
+  app.use(helmet({
+    contentSecurityPolicy: isDev ? false : {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com", "https://docs.google.com"],
+        connectSrc: ["'self'"],
+      }
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+  app.use(cors({ origin: false }));
   app.use(express.json({ limit: "2mb" }));
 
   // Fungsi sinkronisasi awal ke Supabase (latar belakang, tidak blocking)
@@ -48,6 +107,10 @@ async function startServer() {
           ["tkjt_picket_accounts", () => db.getPicketAccounts()],
           ["tkjt_picket_reports", () => db.getPicketReports()],
           ["tkjt_inventory", () => db.getInventory()],
+          ["tkjt_absensi", () => db.getAbsensi()],
+          ["tkjt_bengkel_logs", () => db.getBengkelLogs()],
+          ["tkjt_materi", () => db.getMateri()],
+          ["tkjt_pencapaian", () => db.getPencapaian()],
         ];
 
         for (const [table, getItems] of syncPairs) {
@@ -154,7 +217,7 @@ async function startServer() {
   app.get("/api/supabase-status", (_req, res) => {
     res.json({
       supabaseClientCreated: !!supabase,
-      configured: !!(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
+      configured: supabaseConfigured(),
     });
   });
 
@@ -168,20 +231,101 @@ async function startServer() {
     const userLower = String(username).trim().toLowerCase();
     const passRaw = String(password).trim();
 
-    const adminUser = (process.env.ADMIN_USER || "guru").toLowerCase();
-    const adminPass = process.env.ADMIN_PASS || "tkjt";
-    const guestUser = (process.env.GUEST_USER || "tamu").toLowerCase();
-    const guestPass = process.env.GUEST_PASS || "tkjt";
+    const adminUser = (process.env.ADMIN_USER || "").trim().toLowerCase();
+    const adminPass = (process.env.ADMIN_PASS || "").trim();
+    const guestUser = (process.env.GUEST_USER || "").trim().toLowerCase();
+    const guestPass = (process.env.GUEST_PASS || "").trim();
 
-    if (userLower === adminUser && passRaw === adminPass) {
-      return res.json({ success: true, role: "admin", username: adminUser });
+    if (!adminUser || !adminPass) {
+      return res.status(500).json({ error: "Admin credentials not configured on server" });
     }
-    if (userLower === guestUser && passRaw === guestPass) {
-      return res.json({ success: true, role: "tamu", username: guestUser });
+    if (!authConfigured()) {
+      return res.status(503).json({ error: "Server belum dikonfigurasi: AUTH_SECRET tidak diset" });
     }
 
-    // Cek akun piket dari localStorage client (tetap client-side untuk akun piket)
+    if (safeEqual(userLower, adminUser) && safeEqual(passRaw, adminPass)) {
+      return res.json({
+        success: true,
+        role: "admin",
+        username: adminUser,
+        token: issueToken({ username: adminUser, role: "admin" }),
+      });
+    }
+    if (
+      guestUser &&
+      guestPass &&
+      safeEqual(userLower, guestUser) &&
+      safeEqual(passRaw, guestPass)
+    ) {
+      return res.json({
+        success: true,
+        role: "tamu",
+        username: guestUser,
+        token: issueToken({ username: guestUser, role: "tamu" }),
+      });
+    }
+
     return res.status(401).json({ error: "Kombinasi nama pengguna atau kata sandi tidak valid" });
+  });
+
+  // Login akun piket & verifikasi PIN, keduanya server-side
+  app.post("/api/auth/picket", async (req, res) => {
+    if (!authConfigured()) {
+      return res.status(503).json({ error: "Server belum dikonfigurasi: AUTH_SECRET tidak diset" });
+    }
+
+    const { action, username, pin, groupName } = req.body || {};
+    const pinRaw = String(pin || "").trim();
+    if (!pinRaw) {
+      return res.status(400).json({ error: "PIN harus diisi" });
+    }
+
+    const accounts = await loadAccountsWithPins();
+
+    if (action === "verify") {
+      const group = String(groupName || "").trim();
+      if (!group) {
+        return res.status(400).json({ error: "Kelompok piket harus disebutkan" });
+      }
+      const account = accounts.find((a) => a.groupName === group);
+      if (!account || typeof account.pin !== "string" || !account.pin) {
+        return res.status(404).json({ error: "Akun piket kelompok ini belum dikonfigurasi" });
+      }
+      if (!verifyPin(pinRaw, account.pin)) {
+        return res.status(401).json({ valid: false, error: "PIN Otorisasi salah" });
+      }
+      return res.json({ valid: true, ketuaPiket: account.ketuaPiket });
+    }
+
+    const userLower = String(username || "").trim().toLowerCase();
+    if (!userLower) {
+      return res.status(400).json({ error: "Username harus diisi" });
+    }
+
+    const account = accounts.find(
+      (a) =>
+        String(a.username || "").toLowerCase() === userLower &&
+        typeof a.pin === "string" &&
+        a.pin,
+    );
+    if (!account || !verifyPin(pinRaw, account.pin)) {
+      return res.status(401).json({ error: "Kombinasi nama pengguna atau kata sandi tidak valid" });
+    }
+
+    const gName = account.groupName || "";
+    let kelas = "TKJT 1";
+    if (gName.includes("TKJT 2")) kelas = "TKJT 2";
+    else if (gName.includes("TKJT 3")) kelas = "TKJT 3";
+    const angkatan = gName.includes("Angkatan 9") || gName.includes("9") ? 9 : 8;
+
+    return res.json({
+      success: true,
+      role: "piket",
+      username: account.username,
+      kelas,
+      angkatan,
+      token: issueToken({ username: account.username, role: "piket", kelas, angkatan }),
+    });
   });
 
   // Fungsi ambil data galeri & siswa (students langsung dari data.ts)
@@ -210,12 +354,13 @@ async function startServer() {
 
   // Fungsi simpan data galeri (students bersifat read-only dari data.ts)
   app.post("/api/data", async (req, res) => {
+    if (!requireWriteAccess(req, res, ["admin"])) return;
     try {
       const { galleryItems } = req.body;
-      if (!galleryItems) {
+      if (!Array.isArray(galleryItems)) {
         return res
           .status(400)
-          .json({ error: "Data galeri tidak lengkap" });
+          .json({ error: "Data galeri harus berupa array" });
       }
 
       db.setGalleryItems(galleryItems);
@@ -236,6 +381,9 @@ async function startServer() {
 
   // Fungsi ambil data piket
   app.get("/api/picket", async (_req, res) => {
+    // Pin tidak pernah dikirim ke klien. Yang tersimpan adalah hash scrypt.
+    const shape = (accounts: any[]) => stripPins(accounts);
+
     try {
       if (supabase) {
         const { data: groups, error: groupsErr } = await supaQuery(
@@ -258,20 +406,20 @@ async function startServer() {
         ) {
           return res.json({
             picketGroups: stripMeta(groups),
-            picketAccounts: stripMeta(accounts),
+            picketAccounts: shape(stripMeta(accounts)),
             picketReports: stripMeta(reports),
           });
         }
       }
       res.json({
         picketGroups: db.getPicketGroups(),
-        picketAccounts: db.getPicketAccounts(),
+        picketAccounts: shape(db.getPicketAccounts()),
         picketReports: db.getPicketReports(),
       });
     } catch {
       res.json({
         picketGroups: db.getPicketGroups(),
-        picketAccounts: db.getPicketAccounts(),
+        picketAccounts: shape(db.getPicketAccounts()),
         picketReports: db.getPicketReports(),
       });
     }
@@ -279,18 +427,31 @@ async function startServer() {
 
   // Fungsi simpan data piket
   app.post("/api/picket", async (req, res) => {
+    const session = requireWriteAccess(req, res, ["admin", "piket"]);
+    if (!session) return;
     try {
       const { picketGroups, picketAccounts, picketReports } = req.body;
 
+      // Hanya admin boleh mengubah kelompok dan akun (termasuk pin).
+      if ((picketGroups || picketAccounts) && session.role !== "admin") {
+        return res.status(403).json({
+          error: "Hanya admin yang boleh mengubah kelompok atau akun piket",
+        });
+      }
+
       if (picketGroups) db.setPicketGroups(picketGroups);
-      if (picketAccounts) db.setPicketAccounts(picketAccounts);
+      let mergedAccounts: any[] | null = null;
+      if (picketAccounts) {
+        mergedAccounts = preserveExistingPins(picketAccounts, db.getPicketAccounts());
+        db.setPicketAccounts(mergedAccounts);
+      }
       if (picketReports) db.setPicketReports(picketReports);
 
       if (supabase) {
         try {
           if (picketGroups) await syncTable("tkjt_picket_groups", picketGroups);
-          if (picketAccounts)
-            await syncTable("tkjt_picket_accounts", picketAccounts);
+          if (mergedAccounts)
+            await syncTable("tkjt_picket_accounts", mergedAccounts);
           if (picketReports)
             await syncTable("tkjt_picket_reports", picketReports);
         } catch (err) {
@@ -323,6 +484,7 @@ async function startServer() {
 
   // Fungsi simpan data inventaris
   app.post("/api/inventory", async (req, res) => {
+    if (!requireWriteAccess(req, res, ["admin", "piket"])) return;
     try {
       const items = req.body;
       if (!Array.isArray(items)) {
@@ -340,6 +502,166 @@ async function startServer() {
         }
       }
       res.json({ success: true, inventory: items });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Fungsi ambil data absensi TKJT
+  app.get('/api/absensi', async (_req, res) => {
+    try {
+      if (supabase) {
+        const { data, error } = await supaQuery(
+          supabase.from('tkjt_absensi').select('*').order('createdAt', { ascending: false }),
+        );
+        if (!error && data) {
+          return res.json(stripMeta(data));
+        }
+      }
+      res.json(db.getAbsensi());
+    } catch {
+      res.json(db.getAbsensi());
+    }
+  });
+
+  // Fungsi simpan data absensi TKJT
+  app.post('/api/absensi', async (req, res) => {
+    if (!requireWriteAccess(req, res, ['admin', 'piket'])) return;
+    try {
+      const items = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'Data absensi harus berupa array' });
+      }
+      db.setAbsensi(items);
+
+      if (supabase) {
+        try {
+          await syncTable('tkjt_absensi', items);
+        } catch (err) {
+          console.error('Supabase absensi sync error:', err);
+        }
+      }
+      res.json({ success: true, absensi: items });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Fungsi ambil data log penggunaan bengkel
+  app.get('/api/bengkel', async (_req, res) => {
+    try {
+      if (supabase) {
+        const { data, error } = await supaQuery(
+          supabase.from('tkjt_bengkel_logs').select('*').order('createdAt', { ascending: false }),
+        );
+        if (!error && data) {
+          return res.json(stripMeta(data));
+        }
+      }
+      res.json(db.getBengkelLogs());
+    } catch {
+      res.json(db.getBengkelLogs());
+    }
+  });
+
+  // Fungsi simpan data log penggunaan bengkel
+  app.post('/api/bengkel', async (req, res) => {
+    if (!requireWriteAccess(req, res, ['admin', 'piket'])) return;
+    try {
+      const items = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'Data bengkel harus berupa array' });
+      }
+      db.setBengkelLogs(items);
+
+      if (supabase) {
+        try {
+          await syncTable('tkjt_bengkel_logs', items);
+        } catch (err) {
+          console.error('Supabase bengkel sync error:', err);
+        }
+      }
+      res.json({ success: true, bengkelLogs: items });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Fungsi ambil data materi TKJT
+  app.get('/api/materi', async (_req, res) => {
+    try {
+      if (supabase) {
+        const { data, error } = await supaQuery(
+          supabase.from('tkjt_materi').select('*').order('order', { ascending: true }),
+        );
+        if (!error && data) {
+          return res.json(stripMeta(data));
+        }
+      }
+      res.json(db.getMateri());
+    } catch {
+      res.json(db.getMateri());
+    }
+  });
+
+  // Fungsi simpan data materi TKJT
+  app.post('/api/materi', async (req, res) => {
+    if (!requireWriteAccess(req, res, ['admin'])) return;
+    try {
+      const items = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'Data materi harus berupa array' });
+      }
+      db.setMateri(items);
+
+      if (supabase) {
+        try {
+          await syncTable('tkjt_materi', items);
+        } catch (err) {
+          console.error('Supabase materi sync error:', err);
+        }
+      }
+      res.json({ success: true, materi: items });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Fungsi ambil data pencapaian TKJT
+  app.get('/api/pencapaian', async (_req, res) => {
+    try {
+      if (supabase) {
+        const { data, error } = await supaQuery(
+          supabase.from('tkjt_pencapaian').select('*').order('createdAt', { ascending: false }),
+        );
+        if (!error && data) {
+          return res.json(stripMeta(data));
+        }
+      }
+      res.json(db.getPencapaian());
+    } catch {
+      res.json(db.getPencapaian());
+    }
+  });
+
+  // Fungsi simpan data pencapaian TKJT
+  app.post('/api/pencapaian', async (req, res) => {
+    if (!requireWriteAccess(req, res, ['admin'])) return;
+    try {
+      const items = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'Data pencapaian harus berupa array' });
+      }
+      db.setPencapaian(items);
+
+      if (supabase) {
+        try {
+          await syncTable('tkjt_pencapaian', items);
+        } catch (err) {
+          console.error('Supabase pencapaian sync error:', err);
+        }
+      }
+      res.json({ success: true, pencapaian: items });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

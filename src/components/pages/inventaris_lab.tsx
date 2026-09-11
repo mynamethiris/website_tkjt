@@ -2,20 +2,20 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Plus, Package, X, AlertTriangle, Info, Check, RotateCcw, Edit, Trash2, Calendar, UserCheck, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import studentsData from '../../../data/students.json';
 import { Student, InventoryItem } from '../../types';
-const students = studentsData as Student[];
-const initialInventory: InventoryItem[] = [];
 import Dropdown from '../features/dropdown';
 import Modal from '../features/modal';
 import Card from '../features/card';
 import Button from '../features/button';
-import { deepEqual } from '../../utils';
+import DatePicker from '../features/date_picker';
+import { authHeaders } from '../../auth_client';
+import { deepEqual, formatTanggalIndo } from '../../utils';
 
 interface InventarisProps {
   isLoggedIn: boolean;
   onLoginRequest: () => void;
   triggerToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+  studentsState?: Student[];
   userSession?: {
     username: string;
     role: 'admin' | 'piket' | 'tamu';
@@ -53,20 +53,35 @@ const formatDisplayDateTime = (val: string) => {
   if (!val) return '';
   if (val.includes('T')) {
     const [datePart, timePart] = val.split('T');
-    const [year, month, day] = datePart.split('-');
-    if (year && month && day && timePart) {
-      return `${day}-${month}-${year} ${timePart}`;
+    const formattedDate = formatTanggalIndo(datePart);
+    if (formattedDate && timePart) {
+      return `${formattedDate} ${timePart.slice(0,5)}`;
     }
+    return formattedDate;
   }
-  return val;
+  // DD-MM-YYYY HH:mm
+  const dmyMatch = val.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}:\d{2})/);
+  if (dmyMatch) {
+    const [, d, m, y, t] = dmyMatch;
+    return `${formatTanggalIndo(`${y}-${m}-${d}`)} ${t}`;
+  }
+  // Already Indo or other
+  if (val.includes('Aktual')) {
+    const base = val.replace(' (Aktual)', '');
+    return `${formatDisplayDateTime(base)} (Aktual)`;
+  }
+  return formatTanggalIndo(val) || val;
 };
 
 export default function Inventaris({
   isLoggedIn,
   onLoginRequest,
   triggerToast,
+  studentsState,
   userSession,
 }: InventarisProps) {
+  // Daftar siswa datang dari GET /api/data lewat app.tsx, tidak di-bundle.
+  const students: Student[] = studentsState ?? [];
   // [State Komponen]
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
 
@@ -98,7 +113,7 @@ export default function Inventaris({
     try {
       const res = await fetch('/api/inventory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(items)
       });
       if (res.ok) {
@@ -312,7 +327,8 @@ export default function Inventaris({
 
     const now = new Date();
     const pad = (num: number) => String(num).padStart(2, '0');
-    const formattedTime = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const isoDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const formattedTime = `${formatTanggalIndo(isoDate)} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
     const targetItem = inventoryList.find(item => item.id === id);
     if (targetItem) {
@@ -487,13 +503,13 @@ export default function Inventaris({
                   options={
                     borrowerAngkatan === 8
                       ? [
-                          { value: 'TKJT 1', label: 'TKJT 1 (Kelas Utama)' },
-                          { value: 'TKJT 2', label: 'TKJT 2 (Kelas Jaringan)' },
+                          { value: 'TKJT 1', label: 'TKJT 1' },
+                          { value: 'TKJT 2', label: 'TKJT 2' },
                         ]
                       : [
-                          { value: 'TKJT 1', label: 'TKJT 1 (Kelas Utama)' },
-                          { value: 'TKJT 2', label: 'TKJT 2 (Kelas Jaringan)' },
-                          { value: 'TKJT 3', label: 'TKJT 3 (Kelas Optik)' },
+                          { value: 'TKJT 1', label: 'TKJT 1' },
+                          { value: 'TKJT 2', label: 'TKJT 2' },
+                          { value: 'TKJT 3', label: 'TKJT 3' },
                         ]
                   }
                 />
@@ -511,7 +527,7 @@ export default function Inventaris({
                       setBorrowerTkjt('TKJT 1');
                     }
                   }}
-                  options={[{ value: '8', label: 'Angkatan 8' }, { value: '9', label: 'Angkatan 9' },]}
+                  options={[{ value: '8', label: 'Angkatan 1' }, { value: '9', label: 'Angkatan 2' },]}
                 />
               </div>
             </div>
@@ -677,22 +693,26 @@ export default function Inventaris({
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Tgl Pinjam:</label>
-                      <input 
-                        type="datetime-local"
-                        required
-                        className="w-full text-xs rounded-lg border-2 border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none"
-                        value={rentTime}
-                        onChange={(e) => setRentTime(e.target.value)}
+                      <DatePicker
+                        id="inline-inventaris-pinjam"
+                        value={rentTime.includes('T') ? rentTime.split('T')[0] : rentTime && rentTime.includes('-') && rentTime.split('-')[0].length === 2 ? (() => { const [d,m,y] = rentTime.split(' ')[0].split('-'); return `${y}-${m}-${d}`; })() : rentTime}
+                        onChange={(v) => {
+                          const timePart = rentTime.includes('T') ? rentTime.split('T')[1].slice(0,5) : '08:00';
+                          setRentTime(`${v}T${timePart}`);
+                        }}
+                        placeholder="Pilih tanggal..."
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Estimasi Kembali:</label>
-                      <input 
-                        type="datetime-local"
-                        required
-                        className="w-full text-xs rounded-lg border-2 border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none"
-                        value={returnTime}
-                        onChange={(e) => setReturnTime(e.target.value)}
+                      <DatePicker
+                        id="inline-inventaris-kembali"
+                        value={returnTime.includes('T') ? returnTime.split('T')[0] : returnTime && returnTime.includes('-') && returnTime.split('-')[0].length === 2 ? (() => { const [d,m,y] = returnTime.split(' ')[0].split('-'); return `${y}-${m}-${d}`; })() : returnTime}
+                        onChange={(v) => {
+                          const timePart = returnTime.includes('T') ? returnTime.split('T')[1].slice(0,5) : '23:59';
+                          setReturnTime(`${v}T${timePart}`);
+                        }}
+                        placeholder="Pilih tanggal..."
                       />
                     </div>
                   </div>
@@ -885,36 +905,30 @@ export default function Inventaris({
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
                     Tanggal Keluar:
                   </label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
-                      <Calendar className="h-3.5 w-3.5" />
-                    </div>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={rentTime}
-                      onChange={(e) => setRentTime(e.target.value)}
-                      className="w-full text-xs rounded-xl border-2 border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 pl-9 pr-3 py-2.5 text-slate-855 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"
-                    />
-                  </div>
+                  <DatePicker
+                    id="inventaris-tanggal-keluar"
+                    value={rentTime.includes('T') ? rentTime.split('T')[0] : rentTime && rentTime.includes('-') && rentTime.split('-')[0].length === 2 ? (() => { const [d,m,y] = rentTime.split(' ')[0].split('-'); return `${y}-${m}-${d}`; })() : rentTime}
+                    onChange={(v) => {
+                      const timePart = rentTime.includes('T') ? rentTime.split('T')[1].slice(0,5) : '08:00';
+                      setRentTime(`${v}T${timePart}`);
+                    }}
+                    placeholder="Pilih tanggal keluar..."
+                  />
                 </div>
 
                 <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
                     Estimasi Kembali:
                   </label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
-                      <Calendar className="h-3.5 w-3.5" />
-                    </div>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={returnTime}
-                      onChange={(e) => setReturnTime(e.target.value)}
-                      className="w-full text-xs rounded-xl border-2 border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 pl-9 pr-3 py-2.5 text-slate-855 dark:text-white focus:border-blue-500 focus:outline-none transition-colors"
-                    />
-                  </div>
+                  <DatePicker
+                    id="inventaris-tanggal-kembali"
+                    value={returnTime.includes('T') ? returnTime.split('T')[0] : returnTime && returnTime.includes('-') && returnTime.split('-')[0].length === 2 ? (() => { const [d,m,y] = returnTime.split(' ')[0].split('-'); return `${y}-${m}-${d}`; })() : returnTime}
+                    onChange={(v) => {
+                      const timePart = returnTime.includes('T') ? returnTime.split('T')[1].slice(0,5) : '23:59';
+                      setReturnTime(`${v}T${timePart}`);
+                    }}
+                    placeholder="Pilih estimasi kembali..."
+                  />
                 </div>
               </div>
             </div>

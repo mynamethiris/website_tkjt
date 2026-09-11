@@ -1,10 +1,10 @@
 import { useState, useEffect, ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Users, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
-import staticStudents from "../../../data/students.json";
 import teachersData from "../../../data/teachers.json";
 import LazyImage from "../features/lazy_image";
 import { Student } from "../../types";
+import { getAngkatanDisplay } from "../../utils";
 const teachers = teachersData as any[];
 
 // [Animasi gulir]
@@ -33,7 +33,7 @@ interface ProfilProps {
 
 // [Komponen utama]
 export default function Profil({ studentsState }: ProfilProps = {}) {
-  const activeStudents = studentsState || staticStudents;
+  const activeStudents = studentsState ?? [];
 
   // [State filter]
   const [selectedAngkatan, setSelectedAngkatan] = useState<number>(8);
@@ -244,7 +244,7 @@ export default function Profil({ studentsState }: ProfilProps = {}) {
                             : "text-slate-500 dark:text-slate-400"
                         }
                       >
-                        Angkatan {gen}
+                        Angkatan {getAngkatanDisplay(gen)}
                       </span>
                     </button>
                   );
@@ -314,7 +314,7 @@ export default function Profil({ studentsState }: ProfilProps = {}) {
               {filteredStudents.length === 0 ? (
                 <div className="py-16 text-center text-slate-400 text-xs border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-950/25">
                   Belum ada data murid untuk kelas {selectedKelas} Angkatan{" "}
-                  {selectedAngkatan}.
+                  {getAngkatanDisplay(selectedAngkatan)}.
                 </div>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 overflow-hidden">

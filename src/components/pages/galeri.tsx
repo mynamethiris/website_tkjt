@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, ReactNode } from "react";
-import { Image as ImageIcon, Plus, Edit, Trash2 } from "lucide-react";
+import { Image as ImageIcon, Plus, Edit, Trash2, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 const staticGallery: GalleryItem[] = [];
 const toRawUrl = (url: string) =>
@@ -250,10 +250,11 @@ export default function Galeri({
           <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-black aspect-video w-full shadow-inner">
             <iframe
               className="absolute inset-0 w-full h-full"
-              src="https://www.youtube.com/embed/utBPuUL7bxU"
+              src="https://www.youtube.com/embed/HnlNn4nvF04?autoplay=1&mute=1&si=3zdOiU3Q4HXwuKnn"
               title="Video Dokumentasi & Pengenalan TKJT"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
             />
           </div>
         </div>
@@ -415,13 +416,24 @@ export default function Galeri({
                     Arsip Terverifikasi TKJT AMI
                   </span>
 
-                  <button
-                    type="button"
-                    onClick={() => setFocusedItem(null)}
-                    className="w-full sm:w-auto px-6 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer text-center"
-                  >
-                    Tutup Gambar
-                  </button>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <a
+                      href={toRawUrl(focusedItem.photo)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Buka Link
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setFocusedItem(null)}
+                      className="flex-1 sm:flex-none px-6 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer text-center"
+                    >
+                      Tutup
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>

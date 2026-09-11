@@ -8,15 +8,17 @@ import Profil_jurusan from './components/pages/profil_jurusan';
 import Laporan_piket from './components/pages/laporan_piket';
 import Galeri from './components/pages/galeri';
 import Inventaris_lab from './components/pages/inventaris_lab';
+import Absensi_tkjt from './components/pages/absensi_tkjt';
+import Materi from './components/pages/materi';
+import Pencapaian from './components/pages/pencapaian';
 import Admin from './components/pages/admin';
 import Toast_notification from './components/features/toast_notification';
 import Modal from './components/features/modal';
 import Button from './components/features/button';
-import { PicketAccount, Student, GalleryItem } from './types';
+import { Student, GalleryItem, AbsensiTKJT, TKJTMateri, PencapaianTKJT } from './types';
 import Kontributor from './components/pages/kontributor';
-import defaultStudentsData from '../data/students.json';
+import { authHeaders, clearToken, getToken, saveToken } from './auth_client';
 
-const defaultStudents = defaultStudentsData as Student[];
 const defaultGallery: GalleryItem[] = [];
 
 import { deepEqual } from './utils';
@@ -28,6 +30,9 @@ export default function App() {
   });
   const [studentsState, setStudentsState] = useState<Student[]>([]);
   const [galleryItemsState, setGalleryItemsState] = useState<GalleryItem[]>([]);
+  const [absensiState, setAbsensiState] = useState<AbsensiTKJT[]>([]);
+  const [materiState, setMateriState] = useState<TKJTMateri[]>([]);
+  const [pencapaianState, setPencapaianState] = useState<PencapaianTKJT[]>([]);
 
   // Efek Simpan Tab Aktif
   useEffect(() => {
@@ -41,8 +46,6 @@ export default function App() {
       .then(data => {
         if (data && Array.isArray(data.students)) {
           setStudentsState(data.students);
-        } else {
-          setStudentsState(defaultStudents);
         }
         if (data && Array.isArray(data.galleryItems)) {
           setGalleryItemsState(data.galleryItems);
@@ -52,7 +55,6 @@ export default function App() {
       })
       .catch(err => {
         console.error("Gagal mengambil data dari API:", err);
-        setStudentsState(defaultStudents);
         setGalleryItemsState(defaultGallery);
       });
 
@@ -80,6 +82,33 @@ export default function App() {
           }
         })
         .catch(err => console.error("Error polling data:", err));
+
+      fetch('/api/absensi')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setAbsensiState(prev => !deepEqual(prev, data) ? data : prev);
+          }
+        })
+        .catch(err => console.error("Error polling absensi:", err));
+
+      fetch('/api/materi')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setMateriState(prev => !deepEqual(prev, data) ? data : prev);
+          }
+        })
+        .catch(err => console.error("Error polling materi:", err));
+
+      fetch('/api/pencapaian')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setPencapaianState(prev => !deepEqual(prev, data) ? data : prev);
+          }
+        })
+        .catch(err => console.error("Error polling pencapaian:", err));
     }, 5000);
 
     return () => clearInterval(poll);
@@ -90,9 +119,9 @@ export default function App() {
     try {
       const response = await fetch('/api/data', {
         method: 'POST',
-        headers: {
+        headers: authHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify({ galleryItems: updatedGallery }),
       });
       const resData = await response.json();
@@ -104,10 +133,88 @@ export default function App() {
         triggerToast("Gagal menyimpan perubahan ke server", "error");
         return false;
       }
+      } catch (error) {
+        console.error("Error saving data:", error);
+        setGalleryItemsState(updatedGallery);
+        triggerToast("Perubahan tersimpan sementara di lokal browser", "info");
+        return false;
+      }
+    };
+
+  // Handler Simpan Data Absensi
+  const handleSaveAbsensi = async (updatedAbsensi: AbsensiTKJT[]) => {
+    try {
+      const response = await fetch('/api/absensi', {
+        method: 'POST',
+        headers: authHeaders({
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify(updatedAbsensi),
+      });
+      const resData = await response.json();
+      if (resData.success) {
+        setAbsensiState(updatedAbsensi);
+        triggerToast("Data absensi berhasil disimpan!", "success");
+        return true;
+      } else {
+        triggerToast("Gagal menyimpan data absensi", "error");
+        return false;
+      }
     } catch (error) {
-      console.error("Error saving data:", error);
-      setGalleryItemsState(updatedGallery);
-      triggerToast("Perubahan tersimpan sementara di lokal browser", "info");
+      console.error("Error saving absensi:", error);
+      triggerToast("Perubahan absensi tersimpan sementara di lokal browser", "info");
+      return false;
+    }
+  };
+
+  // Handler Simpan Data Materi
+  const handleSaveMateri = async (updatedMateri: TKJTMateri[]) => {
+    try {
+      const response = await fetch('/api/materi', {
+        method: 'POST',
+        headers: authHeaders({
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify(updatedMateri),
+      });
+      const resData = await response.json();
+      if (resData.success) {
+        setMateriState(updatedMateri);
+        triggerToast("Data materi berhasil disimpan!", "success");
+        return true;
+      } else {
+        triggerToast("Gagal menyimpan data materi", "error");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error saving materi:", error);
+      triggerToast("Perubahan materi tersimpan sementara di lokal browser", "info");
+      return false;
+    }
+  };
+
+  // Handler Simpan Data Pencapaian
+  const handleSavePencapaian = async (updatedPencapaian: PencapaianTKJT[]) => {
+    try {
+      const response = await fetch('/api/pencapaian', {
+        method: 'POST',
+        headers: authHeaders({
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify(updatedPencapaian),
+      });
+      const resData = await response.json();
+      if (resData.success) {
+        setPencapaianState(updatedPencapaian);
+        triggerToast("Data pencapaian berhasil disimpan!", "success");
+        return true;
+      } else {
+        triggerToast("Gagal menyimpan data pencapaian", "error");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error saving pencapaian:", error);
+      triggerToast("Perubahan pencapaian tersimpan sementara di lokal browser", "info");
       return false;
     }
   };
@@ -118,10 +225,8 @@ export default function App() {
     return saved ? saved === 'dark' : false;
   });
 
-  // Status Autentikasi
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('tkjt_auth') === 'true';
-  });
+  // Status Autentikasi. Sesi hanya dianggap aktif kalau token dari server masih ada.
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => getToken() !== '');
 
   interface UserSession {
     username: string;
@@ -131,17 +236,14 @@ export default function App() {
   }
 
   const [userSession, setUserSession] = useState<UserSession | null>(() => {
+    if (!getToken()) return null;
     const saved = localStorage.getItem('tkjt_user_session');
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch (e) {
+      } catch {
         return null;
       }
-    }
-
-    if (localStorage.getItem('tkjt_auth') === 'true') {
-      return { username: 'guru', role: 'admin' };
     }
     return null;
   });
@@ -214,7 +316,6 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
 
-    const userLower = usernameInput.trim().toLowerCase();
     const passLower = passwordInput.trim();
 
     // Coba login admin/guest via server
@@ -224,12 +325,17 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: usernameInput.trim(), password: passLower }),
       });
+      if (res.status === 429) {
+        setLoginError('Terlalu banyak percobaan login. Coba lagi nanti.');
+        triggerToast('Silakan tunggu sebelum mencoba lagi.', 'error');
+        return;
+      }
       const data = await res.json();
-      if (data.success && data.role) {
+      if (data.success && data.role && data.token) {
         const session: UserSession = { username: data.username, role: data.role };
+        saveToken(data.token);
         setIsLoggedIn(true);
         setUserSession(session);
-        localStorage.setItem('tkjt_auth', 'true');
         localStorage.setItem('tkjt_user_session', JSON.stringify(session));
         setIsLoginModalOpen(false);
         setUsernameInput('');
@@ -237,47 +343,52 @@ export default function App() {
         triggerToast(`Selamat, login berhasil sebagai ${session.role.toUpperCase()}!`, "success");
         return;
       }
+      if (res.status === 401 || res.status === 403) {
+        setLoginError(data.error || 'Nama pengguna atau kata sandi tidak valid!');
+        triggerToast('Identifikasi gagal! Periksa kembali kredensial Anda.', 'error');
+        return;
+      }
     } catch {
       // Jika server down, lanjutkan ke pengecekan piket
     }
 
-    // Cek akun piket dari localStorage
-    const savedAccountsStr = localStorage.getItem('tkjt_picket_accounts');
-    let registeredAccounts: PicketAccount[] = [];
-    if (savedAccountsStr) {
-      try {
-        registeredAccounts = JSON.parse(savedAccountsStr);
-      } catch {}
-    }
-
-    const matchedAccount = registeredAccounts.find(
-      acc => acc.username.toLowerCase() === userLower && acc.pin === passLower
-    );
-
-    if (matchedAccount) {
-      const gName = matchedAccount.groupName;
-      let kelas = 'TKJT 1';
-      if (gName.includes('TKJT 2')) kelas = 'TKJT 2';
-      else if (gName.includes('TKJT 3')) kelas = 'TKJT 3';
-
-      let angkatan = 8;
-      if (gName.includes('Angkatan 9') || gName.includes('9')) angkatan = 9;
-
-      const session: UserSession = {
-        username: matchedAccount.username,
-        role: 'piket',
-        kelas,
-        angkatan
-      };
-      setIsLoggedIn(true);
-      setUserSession(session);
-      localStorage.setItem('tkjt_auth', 'true');
-      localStorage.setItem('tkjt_user_session', JSON.stringify(session));
-      setIsLoginModalOpen(false);
-      setUsernameInput('');
-      setPasswordInput('');
-      triggerToast(`Selamat, login berhasil sebagai ${session.role.toUpperCase()}!`, "success");
-      return;
+    // Login akun piket, PIN diverifikasi server-side
+    try {
+      const res = await fetch('/api/auth/picket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameInput.trim(), pin: passLower }),
+      });
+      if (res.status === 429) {
+        setLoginError('Terlalu banyak percobaan login. Coba lagi nanti.');
+        triggerToast('Silakan tunggu sebelum mencoba lagi.', 'error');
+        return;
+      }
+      const data = await res.json();
+      if (data.success && data.token) {
+        const session: UserSession = {
+          username: data.username,
+          role: 'piket',
+          kelas: data.kelas,
+          angkatan: data.angkatan,
+        };
+        saveToken(data.token);
+        setIsLoggedIn(true);
+        setUserSession(session);
+        localStorage.setItem('tkjt_user_session', JSON.stringify(session));
+        setIsLoginModalOpen(false);
+        setUsernameInput('');
+        setPasswordInput('');
+        triggerToast(`Selamat, login berhasil sebagai ${session.role.toUpperCase()}!`, "success");
+        return;
+      }
+      if (res.status === 401 || res.status === 403) {
+        setLoginError(data.error || 'Nama pengguna atau PIN tidak valid!');
+        triggerToast('Identifikasi gagal! Periksa kembali kredensial Anda.', 'error');
+        return;
+      }
+    } catch {
+      // Jatuh ke pesan gagal di bawah
     }
 
     setLoginError("Kombinasi nama pengguna atau kata sandi tidak valid!");
@@ -288,7 +399,7 @@ export default function App() {
   const handlePerformLogout = () => {
     setIsLoggedIn(false);
     setUserSession(null);
-    localStorage.removeItem('tkjt_auth');
+    clearToken();
     localStorage.removeItem('tkjt_user_session');
     setActiveTab('beranda');
     triggerToast("Anda telah keluar sesi.", "info");
@@ -358,6 +469,7 @@ export default function App() {
                   isLoggedIn={isLoggedIn}
                   onLoginRequest={openAuthGateway}
                   triggerToast={triggerToast}
+                  studentsState={studentsState}
                   userSession={userSession}
                 />
               ) : activeTab === 'inventaris' ? (
@@ -365,13 +477,46 @@ export default function App() {
                   isLoggedIn={isLoggedIn}
                   onLoginRequest={openAuthGateway}
                   triggerToast={triggerToast}
+                  studentsState={studentsState}
                   userSession={userSession}
+                />
+              ) : activeTab === 'absensi-tkjt' ? (
+                <Absensi_tkjt
+                  isLoggedIn={isLoggedIn}
+                  onLoginRequest={openAuthGateway}
+                  triggerToast={triggerToast}
+                  studentsState={studentsState}
+                  userSession={userSession}
+                  absensiList={absensiState}
+                  setAbsensiList={setAbsensiState}
+                  onSave={handleSaveAbsensi}
+                />
+              ) : activeTab === 'materi' ? (
+                <Materi
+                  isLoggedIn={isLoggedIn}
+                  userSession={userSession}
+                  triggerToast={triggerToast}
+                  materiList={materiState}
+                  setMateriList={setMateriState}
+                  onSave={handleSaveMateri}
+                  onLoginRequest={openAuthGateway}
+                />
+              ) : activeTab === 'pencapaian' ? (
+                <Pencapaian
+                  isLoggedIn={isLoggedIn}
+                  userSession={userSession}
+                  triggerToast={triggerToast}
+                  pencapaianList={pencapaianState}
+                  setPencapaianList={setPencapaianState}
+                  onSave={handleSavePencapaian}
+                  onLoginRequest={openAuthGateway}
                 />
               ) : (
                 <Admin
                   isLoggedIn={isLoggedIn}
                   onLoginRequest={openAuthGateway}
                   triggerToast={triggerToast}
+                  studentsState={studentsState}
                   userSession={userSession}
                 />
               )}
@@ -423,7 +568,7 @@ export default function App() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    maxLength={30}
+                    maxLength={128}
                     placeholder="tkjt"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}

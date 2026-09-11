@@ -1,4 +1,4 @@
-// Komponen Halaman Admin Kredensial & Penjadwalan Piket Laboratorium
+﻿// Komponen Halaman Admin Kredensial & Penjadwalan Piket Laboratorium
 import React, { useState, useEffect, useRef } from "react";
 import {
   Lock,
@@ -19,15 +19,15 @@ import { PicketAccount, PicketGroup, Student } from "../../types";
 import Dropdown from "../features/dropdown";
 import Modal from "../features/modal";
 import Button from "../features/button";
-import studentsData from "../../../data/students.json";
-const students = studentsData as Student[];
 
 import { deepEqual } from '../../utils';
+import { authHeaders } from '../../auth_client';
 
 interface AdminPageProps {
   isLoggedIn: boolean;
   onLoginRequest: () => void;
   triggerToast: (msg: string, type: "success" | "error" | "info") => void;
+  studentsState?: Student[];
   userSession?: {
     username: string;
     role: "admin" | "piket" | "tamu";
@@ -40,8 +40,11 @@ export default function AdminPage({
   isLoggedIn,
   onLoginRequest,
   triggerToast,
+  studentsState,
   userSession,
 }: AdminPageProps) {
+  // Daftar siswa datang dari GET /api/data lewat app.tsx, tidak di-bundle.
+  const students: Student[] = studentsState ?? [];
   // [State]
   const [activeAdminTab, setActiveAdminTab] = useState<
     "kredensial" | "kelompok"
@@ -57,11 +60,10 @@ export default function AdminPage({
     groups: PicketGroup[],
     accounts: PicketAccount[],
   ) => {
-    localStorage.setItem("tkjt_picket_accounts", JSON.stringify(accounts));
     try {
       const res = await fetch("/api/picket", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           picketGroups: groups,
           picketAccounts: accounts,
@@ -81,7 +83,7 @@ export default function AdminPage({
   useEffect(() => {
     let mounted = true;
 
-    fetch("/api/picket")
+    fetch("/api/picket", { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (mounted && data) {
@@ -92,10 +94,6 @@ export default function AdminPage({
             data.picketAccounts.length > 0
           ) {
             setPicketAccountsList(data.picketAccounts);
-            localStorage.setItem(
-              "tkjt_picket_accounts",
-              JSON.stringify(data.picketAccounts),
-            );
           }
         }
       })
@@ -104,7 +102,7 @@ export default function AdminPage({
       });
 
     const poll = setInterval(() => {
-      fetch("/api/picket")
+      fetch("/api/picket", { headers: authHeaders() })
         .then((res) => res.json())
         .then((data) => {
           if (mounted && data) {
@@ -119,10 +117,6 @@ export default function AdminPage({
             if (Array.isArray(data.picketAccounts)) {
               setPicketAccountsList((prev) => {
                 if (!deepEqual(prev, data.picketAccounts)) {
-                  localStorage.setItem(
-                    "tkjt_picket_accounts",
-                    JSON.stringify(data.picketAccounts),
-                  );
                   return data.picketAccounts;
                 }
                 return prev;
@@ -987,7 +981,7 @@ export default function AdminPage({
                         </p>
                         <div className="flex items-center gap-2">
                           <p className="flex-1 p-2 border border-rose-500/10 bg-rose-500/5 rounded-xl text-xs font-mono font-black tracking-widest text-rose-500">
-                            {showPicketPins[acc.id] ? acc.pin : "••••••••"}
+                            {showPicketPins[acc.id] ? acc.pin : "ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó"}
                           </p>
                           <button
                             type="button"

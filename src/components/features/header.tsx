@@ -33,8 +33,12 @@ export default function Header({
   const lastScrollYRef = useRef(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isManajemenOpen, setIsManajemenOpen] = useState(false);
+  const [isDokumentasiOpen, setIsDokumentasiOpen] = useState(false);
   const [isMobileManajemenOpen, setIsMobileManajemenOpen] = useState(
-    activeTab === "laporan-piket" || activeTab === "inventaris",
+    activeTab === "laporan-piket" || activeTab === "inventaris" || activeTab === "absensi-tkjt",
+  );
+  const [isMobileDokumentasiOpen, setIsMobileDokumentasiOpen] = useState(
+    activeTab === "galeri" || activeTab === "pencapaian",
   );
 
   // State Logo Tahan
@@ -77,8 +81,11 @@ export default function Header({
 
   // Efek Submenu
   useEffect(() => {
-    if (activeTab === "laporan-piket" || activeTab === "inventaris") {
+    if (activeTab === "laporan-piket" || activeTab === "inventaris" || activeTab === "absensi-tkjt") {
       setIsMobileManajemenOpen(true);
+    }
+    if (activeTab === "galeri" || activeTab === "pencapaian") {
+      setIsMobileDokumentasiOpen(true);
     }
   }, [activeTab]);
 
@@ -93,6 +100,8 @@ export default function Header({
         setIsHeaderVisible(true);
       }
       lastScrollYRef.current = currentScrollY;
+      setIsManajemenOpen(false);
+      setIsDokumentasiOpen(false);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -203,26 +212,93 @@ export default function Header({
               Profil Jurusan
             </button>
             <button
-              onClick={() => handleNavClick("galeri")}
+              onClick={() => handleNavClick("materi")}
               className={`text-sm font-semibold tracking-wide transition-all py-2 border-b-2 hover:border-blue-500 cursor-pointer
                 ${
-                  activeTab === "galeri"
+                  activeTab === "materi"
                     ? "text-blue-500 border-blue-500"
                     : "text-slate-600 dark:text-slate-300 border-transparent hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
-              Galeri
+              Materi TKJT
             </button>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => { setIsDokumentasiOpen(!isDokumentasiOpen); setIsManajemenOpen(false); }}
+                className={`text-sm font-semibold tracking-wide transition-all py-2 border-b-2 flex items-center gap-1 cursor-pointer
+                  ${
+                    activeTab === "galeri" || activeTab === "pencapaian"
+                      ? "text-blue-500 border-blue-500"
+                      : "text-slate-600 dark:text-slate-300 border-transparent hover:text-slate-900 dark:hover:text-white"
+                  }`}
+              >
+                Dokumentasi
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${isDokumentasiOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              <AnimatePresence>
+                {isDokumentasiOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className={`absolute left-0 mt-2 w-48 rounded-xl border shadow-xl p-1.5 focus:outline-none z-50 animate-in fade-in duration-100 flex flex-col gap-1.5
+                      ${
+                        isDarkMode
+                          ? "bg-slate-950 border-slate-800 text-slate-100"
+                          : "bg-white border-slate-200 text-slate-800"
+                      }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleNavClick("galeri");
+                        setIsDokumentasiOpen(false);
+                      }}
+                      className={`flex w-full items-center px-4 py-2 rounded-lg text-sm font-semibold tracking-wide transition-colors cursor-pointer text-left
+                        ${
+                          activeTab === "galeri"
+                            ? "bg-blue-500/10 text-blue-500"
+                            : "hover:bg-slate-100 dark:hover:bg-slate-900"
+                        }`}
+                    >
+                      Galeri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleNavClick("pencapaian");
+                        setIsDokumentasiOpen(false);
+                      }}
+                      className={`flex w-full items-center px-4 py-2 rounded-lg text-sm font-semibold tracking-wide transition-colors cursor-pointer text-left
+                        ${
+                          activeTab === "pencapaian"
+                            ? "bg-blue-500/10 text-blue-500"
+                            : "hover:bg-slate-100 dark:hover:bg-slate-900"
+                        }`}
+                    >
+                      Pencapaian TKJT
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {isLoggedIn && userSession?.role !== "tamu" && (
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setIsManajemenOpen(!isManajemenOpen)}
+                  onClick={() => { setIsManajemenOpen(!isManajemenOpen); setIsDokumentasiOpen(false); }}
                   className={`text-sm font-semibold tracking-wide transition-all py-2 border-b-2 flex items-center gap-1 cursor-pointer
                     ${
                       activeTab === "laporan-piket" ||
-                      activeTab === "inventaris"
+                      activeTab === "inventaris" ||
+                      activeTab === "absensi-tkjt"
                         ? "text-blue-500 border-blue-500"
                         : "text-slate-600 dark:text-slate-300 border-transparent hover:text-slate-900 dark:hover:text-white"
                     }`}
@@ -277,6 +353,22 @@ export default function Header({
                       >
                         Inventaris Lab
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleNavClick("absensi-tkjt");
+                          setIsManajemenOpen(false);
+                        }}
+                        className={`flex w-full items-center px-4 py-2 rounded-lg text-sm font-semibold tracking-wide transition-colors cursor-pointer text-left
+                          ${
+                            activeTab === "absensi-tkjt"
+                              ? "bg-blue-500/10 text-blue-500"
+                              : "hover:bg-slate-100 dark:hover:bg-slate-900"
+                          }`}
+                      >
+                        Absensi TKJT
+                      </button>
+
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -428,16 +520,71 @@ export default function Header({
               Profil Jurusan
             </button>
             <button
-              onClick={() => handleNavClick("galeri")}
+              onClick={() => handleNavClick("materi")}
               className={`flex w-full items-center px-4 py-3 rounded-lg text-sm font-semibold transition-colors
                 ${
-                  activeTab === "galeri"
+                  activeTab === "materi"
                     ? "bg-blue-50 dark:bg-blue-900/10 text-blue-500"
                     : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900"
                 }`}
             >
-              Galeri
+              Materi TKJT
             </button>
+
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setIsMobileDokumentasiOpen(!isMobileDokumentasiOpen)}
+                className={`flex w-full items-center justify-between px-4 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer
+                  ${
+                    activeTab === "galeri" || activeTab === "pencapaian"
+                      ? "bg-blue-50 dark:bg-blue-900/10 text-blue-500 font-extrabold"
+                      : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900"
+                  }`}
+              >
+                <span>Dokumentasi</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${isMobileDokumentasiOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              <AnimatePresence>
+                {isMobileDokumentasiOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="pl-4 space-y-2.5 mt-1 border-l-2 border-slate-100 dark:border-slate-800 ml-4 overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleNavClick("galeri")}
+                      className={`flex w-full items-center px-4 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-colors text-left cursor-pointer
+                        ${
+                          activeTab === "galeri"
+                            ? "bg-blue-500/10 text-blue-500"
+                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900"
+                        }`}
+                    >
+                      Galeri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNavClick("pencapaian")}
+                      className={`flex w-full items-center px-4 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-colors text-left cursor-pointer
+                        ${
+                          activeTab === "pencapaian"
+                            ? "bg-blue-500/10 text-blue-500"
+                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900"
+                        }`}
+                    >
+                      Pencapaian TKJT
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {isLoggedIn && userSession?.role !== "tamu" && (
               <div className="space-y-1">
@@ -449,7 +596,8 @@ export default function Header({
                   className={`flex w-full items-center justify-between px-4 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer
                     ${
                       activeTab === "laporan-piket" ||
-                      activeTab === "inventaris"
+                      activeTab === "inventaris" ||
+                      activeTab === "absensi-tkjt"
                         ? "bg-blue-50 dark:bg-blue-900/10 text-blue-500 font-extrabold"
                         : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900"
                     }`}
@@ -493,6 +641,19 @@ export default function Header({
                       >
                         Inventaris Lab
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => handleNavClick("absensi-tkjt")}
+                        className={`flex w-full items-center px-4 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-colors text-left cursor-pointer
+                          ${
+                            activeTab === "absensi-tkjt"
+                              ? "bg-blue-500/10 text-blue-500"
+                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900"
+                          }`}
+                      >
+                        Absensi TKJT
+                      </button>
+
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -544,3 +705,5 @@ export default function Header({
     </motion.header>
   );
 }
+
+

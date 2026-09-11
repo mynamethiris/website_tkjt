@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ArrowLeft, Code, Heart, Shield, Cpu } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 interface KontributorProps {
   setActiveTab: (tab: string) => void;
@@ -25,9 +25,6 @@ export default function Kontributor({ setActiveTab }: KontributorProps) {
         </div>
 
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center p-3 bg-blue-500/10 dark:bg-blue-500/20 rounded-2xl text-blue-500">
-            <Cpu className="h-8 w-8 animate-pulse" />
-          </div>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
             Kontributor
           </h1>
@@ -40,8 +37,7 @@ export default function Kontributor({ setActiveTab }: KontributorProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
           <div className="rounded-3xl border-2 border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 p-6 sm:p-8 space-y-6 transition-all duration-300 hover:border-blue-500 dark:hover:border-blue-400">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200 dark:border-slate-800">
-              <Shield className="h-5 w-5 text-blue-500" />
+            <div className="pb-3 border-b border-slate-200 dark:border-slate-800">
               <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">
                 Pembimbing & Penasihat
               </h2>
@@ -67,8 +63,7 @@ export default function Kontributor({ setActiveTab }: KontributorProps) {
           </div>
 
           <div className="rounded-3xl border-2 border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 p-6 sm:p-8 space-y-6 transition-all duration-300 hover:border-blue-500 dark:hover:border-blue-400">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200 dark:border-slate-800">
-              <Code className="h-5 w-5 text-blue-500" />
+            <div className="pb-3 border-b border-slate-200 dark:border-slate-800">
               <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">
                 Tim Pengembang & Kreatif
               </h2>
@@ -115,9 +110,6 @@ export default function Kontributor({ setActiveTab }: KontributorProps) {
         </div>
 
         <div className="rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/20 p-6 sm:p-8 text-center space-y-3">
-          <div className="inline-flex items-center justify-center p-2.5 bg-rose-500/10 text-rose-500 rounded-2xl">
-            <Heart className="h-5 w-5 animate-pulse fill-rose-500/20" />
-          </div>
           <h3 className="text-lg font-black text-slate-900 dark:text-white">
             Apresiasi Khusus
           </h3>

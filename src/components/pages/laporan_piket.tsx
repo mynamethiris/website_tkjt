@@ -25,13 +25,12 @@ import {
   Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import studentsData from '../../../data/students.json';
 import { PicketReport, PicketAccount, PicketGroup, Student } from '../../types';
-const students = studentsData as Student[];
 import Dropdown from '../features/dropdown';
 import Modal from '../features/modal';
 import Button from '../features/button';
 import { deepEqual } from '../../utils';
+import { authHeaders } from '../../auth_client';
 
 // Koordinat resmi lokasi sekolah untuk verifikasi GPS
 const SCHOOL_COORDS = { lat: -6.352959, lng: 107.181648 }; 
@@ -53,6 +52,7 @@ interface AktivitasProps {
   isLoggedIn: boolean;
   onLoginRequest: () => void;
   triggerToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+  studentsState?: Student[];
   userSession?: {
     username: string;
     role: 'admin' | 'piket' | 'tamu';
@@ -65,8 +65,11 @@ export default function Aktivitas({
   isLoggedIn,
   onLoginRequest,
   triggerToast,
+  studentsState,
   userSession,
 }: AktivitasProps) {
+  // Daftar siswa datang dari GET /api/data lewat app.tsx, tidak di-bundle.
+  const students: Student[] = studentsState ?? [];
   // Status tab internal
   const [activeInternalTab, setActiveInternalTab] = useState<'jadwal' | 'laporan'>('jadwal');
   
@@ -98,14 +101,13 @@ export default function Aktivitas({
   useEffect(() => {
     let mounted = true;
 
-    fetch('/api/picket')
+    fetch('/api/picket', { headers: authHeaders() })
       .then(res => res.json())
       .then(data => {
         if (data && mounted) {
           if (Array.isArray(data.picketGroups)) setPicketGroupsList(data.picketGroups);
           if (Array.isArray(data.picketAccounts)) {
             setPicketAccountsList(data.picketAccounts);
-            localStorage.setItem('tkjt_picket_accounts', JSON.stringify(data.picketAccounts));
           }
           if (Array.isArray(data.picketReports)) setPicketReportsList(data.picketReports);
         }
@@ -113,7 +115,7 @@ export default function Aktivitas({
       .catch(err => console.error("Gagal mengambil data piket backend:", err));
 
     const poll = setInterval(() => {
-      fetch('/api/picket')
+      fetch('/api/picket', { headers: authHeaders() })
         .then(res => res.json())
         .then(data => {
           if (data && mounted) {
@@ -128,7 +130,6 @@ export default function Aktivitas({
             if (Array.isArray(data.picketAccounts)) {
               setPicketAccountsList(prev => {
                 if (!deepEqual(prev, data.picketAccounts)) {
-                  localStorage.setItem('tkjt_picket_accounts', JSON.stringify(data.picketAccounts));
                   return data.picketAccounts;
                 }
                 return prev;
@@ -321,6 +322,9 @@ export default function Aktivitas({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   
   const [reportDescription, setReportDescription] = useState('');
+  const [reportCleanliness, setReportCleanliness] = useState<'Bersih' | 'Kotor' | 'Sedang' | ''>('');
+  const [reportItemCondition, setReportItemCondition] = useState<'Kondisi Baik' | 'Ada Kerusakan Ringan' | 'Perlu Perbaikan' | ''>('');
+  const [reportItemNotes, setReportItemNotes] = useState('');
   const [reportPhotoCount, setReportPhotoCount] = useState<number>(1);
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
   const [reportAbsentField, setReportAbsentField] = useState<string[]>([]);
@@ -334,11 +338,10 @@ export default function Aktivitas({
   const [reportModalError, setReportModalError] = useState<string | null>(null);
 
   const savePicketData = async (groups: PicketGroup[], accounts: PicketAccount[], reports: PicketReport[]) => {
-    localStorage.setItem('tkjt_picket_accounts', JSON.stringify(accounts));
     try {
       const res = await fetch('/api/picket', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ picketGroups: groups, picketAccounts: accounts, picketReports: reports })
       });
       if (res.ok) {
@@ -599,7 +602,7 @@ export default function Aktivitas({
     setIsReportModalOpen(true);
   };
 
-  const handleSubmissionReport = (e?: React.FormEvent | React.MouseEvent) => {
+  const handleSubmissionReport = async (e?: React.FormEvent | React.MouseEvent) => {
     e?.preventDefault();
 
     setReportModalError(null);
@@ -614,13 +617,28 @@ export default function Aktivitas({
       return;
     }
 
-    if (picketSorePinInput !== todayAccount.pin) {
-      setReportModalError("PIN Otorisasi Ketua Piket Aktif salah! Hanya ketua yang bertugas aktif yang diizinkan mengirim laporan.");
+    if (!reportDescription) {
+      setReportModalError("Rincian pengerjaan laporan piket harus diisi!");
       return;
     }
 
-    if (!reportDescription) {
-      setReportModalError("Rincian pengerjaan laporan piket harus diisi!");
+    // PIN diverifikasi server-side. Klien tidak lagi menerima nilai pin.
+    setIsSubmittingReport(true);
+    try {
+      const res = await fetch('/api/auth/picket', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ action: 'verify', groupName: todayGroup.name, pin: picketSorePinInput }),
+      });
+      const verdict = await res.json();
+      if (!res.ok || !verdict.valid) {
+        setReportModalError(verdict.error || "PIN Otorisasi Ketua Piket Aktif salah! Hanya ketua yang bertugas aktif yang diizinkan mengirim laporan.");
+        setIsSubmittingReport(false);
+        return;
+      }
+    } catch {
+      setReportModalError("Gagal memverifikasi PIN: koneksi terputus.");
+      setIsSubmittingReport(false);
       return;
     }
 
@@ -628,8 +646,6 @@ export default function Aktivitas({
     const departureTimeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
 
     const photosFilled = uploadedPhotos.filter(Boolean);
-
-    setIsSubmittingReport(true);
 
     setTimeout(() => {
       const completeReport: PicketReport = {
@@ -640,6 +656,9 @@ export default function Aktivitas({
         date: now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + " " + departureTimeStr,
         description: reportDescription,
         type: 'Pulang',
+        cleanlinessStatus: reportCleanliness || undefined,
+        itemCondition: reportItemCondition || undefined,
+        itemConditionNotes: reportItemNotes || undefined,
         photos: photosFilled.length > 0 ? photosFilled : ["https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&q=80&w=600&h=450"],
         arrivalTime: checkInTime || "Lupa Absen Pagi",
         departureTime: departureTimeStr,
@@ -1200,6 +1219,51 @@ export default function Aktivitas({
                                   />
                                 </div>
 
+                                {/* Cleanliness & Item Condition */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 space-y-1.5 text-left bg-white dark:bg-slate-950">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 block">Status Kebersihan:</label>
+                                    <Dropdown
+                                      id="edit-report-cleanliness"
+                                      value={editReportForm?.cleanlinessStatus || ''}
+                                      onChange={(v) => setEditReportForm(prev => prev ? { ...prev, cleanlinessStatus: v as any } : null)}
+                                      options={[
+                                        { value: 'Bersih', label: 'Bersih' },
+                                        { value: 'Sedang', label: 'Sedang' },
+                                        { value: 'Kotor', label: 'Kotor' },
+                                      ]}
+                                      placeholder="Pilih Status"
+                                    />
+                                  </div>
+                                  <div className="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 space-y-1.5 text-left bg-white dark:bg-slate-950">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 block">Kondisi Barang:</label>
+                                    <Dropdown
+                                      id="edit-report-item-condition"
+                                      value={editReportForm?.itemCondition || ''}
+                                      onChange={(v) => setEditReportForm(prev => prev ? { ...prev, itemCondition: v as any } : null)}
+                                      options={[
+                                        { value: 'Kondisi Baik', label: 'Kondisi Baik' },
+                                        { value: 'Ada Kerusakan Ringan', label: 'Kerusakan Ringan' },
+                                        { value: 'Perlu Perbaikan', label: 'Perlu Perbaikan' },
+                                      ]}
+                                      placeholder="Pilih Kondisi"
+                                    />
+                                  </div>
+                                </div>
+
+                                {editReportForm?.itemCondition && editReportForm.itemCondition !== 'Kondisi Baik' && (
+                                  <div className="p-3 rounded-xl border-2 border-amber-500/20 bg-amber-500/5 space-y-1.5 text-left">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">Catatan Kerusakan:</label>
+                                    <input
+                                      type="text"
+                                      value={editReportForm?.itemConditionNotes || ''}
+                                      onChange={(e) => setEditReportForm(prev => prev ? { ...prev, itemConditionNotes: e.target.value } : null)}
+                                      placeholder="Contoh: Kabel rusak, lampu mati, klem hilang..."
+                                      className="w-full text-xs sm:text-sm rounded-xl border-2 border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-800 dark:text-white focus:outline-none focus:border-amber-500"
+                                    />
+                                  </div>
+                                )}
+
                                 {/* Absent Members List Redesign - Presensi Murid */}
                                 <div className="space-y-1.5 text-left bg-white dark:bg-slate-950 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
                                   <label className="text-[11px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 block mb-1">
@@ -1241,8 +1305,8 @@ export default function Aktivitas({
                                           }
                                         }}
                                         options={[
-                                          { value: '8', label: 'Angkatan 8' },
-                                          { value: '9', label: 'Angkatan 9' },
+                                          { value: '8', label: 'Angkatan 1' },
+                                          { value: '9', label: 'Angkatan 2' },
                                         ]}
                                       />
                                     </div>
@@ -1441,6 +1505,31 @@ export default function Aktivitas({
                                       <p>{merged.pulang.arrivalTime} - {merged.pulang.departureTime}</p>
                                       <p>{merged.pulang.cleanedRooms}</p>
                                     </div>
+                                    {(merged.pulang.cleanlinessStatus || merged.pulang.itemCondition) && (
+                                      <div className="flex flex-wrap gap-2 mt-2">
+                                        {merged.pulang.cleanlinessStatus && (
+                                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                                            merged.pulang.cleanlinessStatus === 'Bersih' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                                            merged.pulang.cleanlinessStatus === 'Kotor' ? 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400' :
+                                            'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+                                          }`}>
+                                            Kebersihan: {merged.pulang.cleanlinessStatus}
+                                          </span>
+                                        )}
+                                        {merged.pulang.itemCondition && (
+                                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                                            merged.pulang.itemCondition === 'Kondisi Baik' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                                            merged.pulang.itemCondition === 'Ada Kerusakan Ringan' ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400' :
+                                            'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
+                                          }`}>
+                                            Barang: {merged.pulang.itemCondition}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    {merged.pulang.itemConditionNotes && (
+                                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 italic">Catatan: {merged.pulang.itemConditionNotes}</p>
+                                    )}
                                     <p className="text-[10px] text-slate-400 mt-2 italic">Pelapor: {merged.pulang.reporter}</p>
                                     {merged.pulang.absentMembers && merged.pulang.absentMembers.length > 0 && (
                                       <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
@@ -1728,6 +1817,50 @@ export default function Aktivitas({
                           className="w-full text-xs sm:text-sm rounded-xl border-2 border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-slate-850 dark:text-white focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 resize-none transition-all duration-200 leading-relaxed placeholder:text-slate-400"
                         />
                       </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 space-y-1.5 text-left">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Status Kebersihan:</label>
+                          <Dropdown
+                            id="report-cleanliness"
+                            value={reportCleanliness}
+                            onChange={(v) => setReportCleanliness(v as any)}
+                            options={[
+                              { value: 'Bersih', label: 'Bersih' },
+                              { value: 'Sedang', label: 'Sedang' },
+                              { value: 'Kotor', label: 'Kotor' },
+                            ]}
+                            placeholder="Pilih Status"
+                          />
+                        </div>
+                        <div className="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-800 space-y-1.5 text-left">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Kondisi Barang:</label>
+                          <Dropdown
+                            id="report-item-condition"
+                            value={reportItemCondition}
+                            onChange={(v) => setReportItemCondition(v as any)}
+                            options={[
+                              { value: 'Kondisi Baik', label: 'Kondisi Baik' },
+                              { value: 'Ada Kerusakan Ringan', label: 'Kerusakan Ringan' },
+                              { value: 'Perlu Perbaikan', label: 'Perlu Perbaikan' },
+                            ]}
+                            placeholder="Pilih Kondisi"
+                          />
+                        </div>
+                      </div>
+
+                      {reportItemCondition && reportItemCondition !== 'Kondisi Baik' && (
+                        <div className="p-3 rounded-xl border-2 border-amber-500/20 bg-amber-500/5 space-y-1.5 text-left">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">Catatan Kerusakan:</label>
+                          <input
+                            type="text"
+                            value={reportItemNotes}
+                            onChange={(e) => setReportItemNotes(e.target.value)}
+                            placeholder="Contoh: Kabel rusak, lampu mati, klem hilang..."
+                            className="w-full text-xs sm:text-sm rounded-xl border-2 border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-800 dark:text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      )}
                     </motion.div>
                   )}
 
@@ -1783,8 +1916,8 @@ export default function Aktivitas({
                               }
                             }}
                             options={[
-                              { value: '8', label: 'Angkatan 8' },
-                              { value: '9', label: 'Angkatan 9' },
+                              { value: '8', label: 'Angkatan 1' },
+                              { value: '9', label: 'Angkatan 2' },
                             ]}
                           />
                         </div>

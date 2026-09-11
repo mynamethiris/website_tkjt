@@ -7,7 +7,9 @@
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "check": "tsc --noEmit && tsx scripts/check_pin.ts && tsx scripts/check_api_handlers.ts",
+    "vercel-build": "vite build"
   },
   "allowScripts": {
     "esbuild": true
