@@ -1,5 +1,10 @@
+// Login admin/tamu — SELF-CONTAINED untuk Vercel ESM.
+//
+// Jangan import dari ../../src/* di file ini: runtime serverless mengeksekusi
+// function sebagai ESM murni, sehingga import relatif tanpa ekstensi membuat
+// function crash saat boot (FUNCTION_INVOCATION_FAILED). Hanya modul builtin
+// yang boleh di-import statis.
 import crypto from 'crypto';
-import { authConfigured, issueToken } from '../../src/server/auth_token';
 
 // ponytail: rate limit in-memory, hanya berlaku per instance serverless yang warm.
 // Cukup untuk memperlambat brute force; ganti ke Upstash/Redis kalau butuh limit global.
@@ -24,6 +29,28 @@ function safeEqual(a: string, b: string): boolean {
   const bb = Buffer.from(b, 'utf8');
   if (ba.length !== bb.length) return false;
   return crypto.timingSafeEqual(ba, bb);
+}
+
+// ---- Token sesi HMAC (duplikat src/server/auth_token.ts) ----
+const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+
+function b64url(buf: Buffer): string {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function authSecret(): string {
+  return (process.env.AUTH_SECRET || '').trim();
+}
+
+function authConfigured(): boolean {
+  return authSecret().length >= 16;
+}
+
+function issueToken(session: { username: string; role: string; kelas?: string; angkatan?: number }): string {
+  const body = { ...session, exp: Date.now() + TOKEN_TTL_MS };
+  const payload = b64url(Buffer.from(JSON.stringify(body), 'utf8'));
+  const sig = b64url(crypto.createHmac('sha256', authSecret()).update(payload).digest());
+  return `${payload}.${sig}`;
 }
 
 export default function handler(req: any, res: any) {
